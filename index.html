@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Statics Modeling Studio — from real object to engineering model</title>
+<style>
+:root {
+  --paper: #f4f7fa; --sheet: #ffffff; --ink: #1d2b45; --ink2: #34445f; --muted: #5d6b7e; --rule: #d3dce6;
+  --grid: #e4edf5; --grid5: #cbdbe9;
+  --ai: #9a5a12; --ai-bg: #fbf2e4; --ai-line: #d9a35c;
+  --stu: #24539f; --stu-bg: #ecf2fb; --stu-line: #7fa2d6;
+  --fact: #24654a; --fact-bg: #eaf4ee; --fact-line: #84b99d;
+  --unk: #a3382b; --res: #6b5a9e;
+  --warn: #8f3510; --warn-bg: #fcefe7; --ok: #24654a;
+  --ui: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --math: "Cambria Math", "STIX Two Math", "STIX Two Text", "Latin Modern Math", Cambria, "Times New Roman", serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+[hidden] { display: none !important; }
+body { font: 14px/1.5 var(--ui); color: var(--ink); background: var(--paper); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--stu); outline-offset: 2px; }
+.m { font-family: var(--math); font-size: 1.08em; white-space: nowrap; }
+.m i { font-style: italic; }
+.m sub { font-style: normal; font-size: 0.72em; }
+.fine { color: var(--muted); font-size: 12.5px; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: 0; }
+h2 { font-size: 15px; }
+h3 { font-size: 13.5px; margin-top: 14px; }
+
+/* ---- header ---- */
+.top { display: flex; align-items: center; gap: 12px; padding: 8px 16px; flex: none; background: var(--sheet); border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+.brand h1 { font-family: var(--math); font-weight: 400; font-size: 21px; }
+.brand h1 b { font-weight: 600; }
+.brand span { color: var(--muted); font-size: 13px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 6px 11px; cursor: pointer; border-right: 1px solid var(--rule); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.units { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+select, input[type=text], input[type=number], textarea { border: 1px solid var(--rule); border-radius: 5px; padding: 4px 7px; background: #fff; }
+input[type=number] { width: 86px; }
+textarea { width: 100%; resize: vertical; min-height: 54px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule); background: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.btn:hover { border-color: var(--ink2); }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn.small { padding: 3px 9px; font-size: 12.5px; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--stu); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---- workspace ---- */
+.ws { display: grid; grid-template-columns: minmax(250px, 22%) 1fr minmax(360px, 30%); gap: 0; flex: 1; min-height: 0; }
+.panel { background: var(--sheet); overflow-y: auto; padding: 14px 16px 30px; }
+#left { border-right: 1px solid var(--rule); }
+#right { border-left: 1px solid var(--rule); }
+.panelhead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 8px; }
+#center { display: flex; flex-direction: column; min-width: 0; padding: 10px 14px; }
+.tabs { display: flex; gap: 4px; align-items: center; }
+.tabs button { border: 1px solid var(--rule); border-bottom: 0; background: var(--paper); padding: 6px 14px; border-radius: 7px 7px 0 0; cursor: pointer; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--sheet); color: var(--ink); font-weight: 600; }
+.tabs .spacer { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+.sheet { flex: 1; background: var(--sheet); border: 1px solid var(--rule); border-radius: 0 8px 8px 8px; position: relative; min-height: 300px; }
+#diagram { width: 100%; height: 100%; display: block; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 7px 4px 0; font-size: 12.5px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 22px; height: 0; border-top: 2.5px solid; vertical-align: middle; margin-right: 6px; }
+.lg-load::before { border-color: var(--ink) !important; }
+.lg-unk::before { border-color: var(--unk) !important; }
+.lg-ai::before { border-color: var(--ai) !important; border-top-style: dashed !important; }
+.lg-res::before { border-color: var(--res) !important; border-top-style: dashed !important; }
+.emptydiag { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 30px; }
+
+/* ---- SVG diagram ---- */
+.gridline { fill: none; stroke: var(--grid); stroke-width: 1; }
+.gridline5 { fill: none; stroke: var(--grid5); stroke-width: 1; }
+.body { fill: none; stroke: var(--ink); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+.body.closed { fill: rgba(29, 43, 69, .05); stroke-width: 5; }
+.pt { fill: #fff; stroke: var(--ink); stroke-width: 1.6; }
+.pt.hl { fill: var(--stu); stroke: var(--stu); }
+.ptlbl { font: 600 15px var(--ui); fill: var(--ink); }
+.cgmark { fill: #fff; stroke: var(--ink); stroke-width: 1.4; }
+.cgfill { fill: var(--ink); }
+.sym, .symfill { fill: #fff; stroke: var(--ink2); stroke-width: 1.8; }
+.symfill { fill: var(--ink2); }
+.pinhole { fill: #fff; stroke: var(--ink2); stroke-width: 1.6; }
+.gnd { stroke: var(--ink2); stroke-width: 2.2; }
+.hatch { stroke: var(--ink2); stroke-width: 1.1; }
+.wall { stroke: var(--ink2); stroke-width: 4; }
+.rough { stroke: var(--ink2); stroke-width: 1.4; fill: none; }
+.rod { stroke: #8795a7; stroke-width: 3; }
+.cable { stroke: var(--ink2); stroke-width: 1.6; }
+.link { stroke: var(--ink2); stroke-width: 5; }
+.sup.proposed .sym, .sup.proposed .gnd, .sup.proposed .hatch, .sup.proposed .wall, .sup.proposed .cable, .sup.proposed .link { stroke: var(--ai); stroke-dasharray: 5 3; }
+.unknownsup { fill: var(--ai-bg); stroke: var(--ai); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.qmark { font: 700 18px var(--ui); fill: var(--ai); }
+.arr { stroke-width: 2.4; fill: none; }
+.arr.load, .arr.axis { stroke: var(--ink); }
+.arr.unk { stroke: var(--unk); }
+.arr.ai { stroke: var(--ai); }
+.arr.res { stroke: var(--res); stroke-width: 2; }
+.axis { stroke: var(--ink); stroke-width: 1.5; }
+.mk-load { fill: var(--ink); } .mk-unk { fill: var(--unk); } .mk-ai { fill: var(--ai); } .mk-res { fill: var(--res); }
+.env { fill: none; stroke-width: 1.5; }
+.env.load { stroke: var(--ink); } .env.ai { stroke: var(--ai); stroke-dasharray: 5 3; }
+.lbl { font: 17px var(--math); fill: var(--ink); }
+.lbl.unk { fill: var(--unk); } .lbl.ai { fill: var(--ai); } .lbl.res { fill: var(--res); font: 13px var(--ui); }
+.lbl .it, .it { font-style: italic; }
+.lbl .sub { font-size: 12px; font-style: normal; }
+.vallbl { font: 12.5px var(--ui); fill: var(--muted); }
+.anglbl { font: 12px var(--ui); fill: var(--unk); }
+.small { font: 12px var(--ui); fill: var(--muted); }
+.scale { stroke: var(--muted); stroke-width: 1.5; }
+.mpt { fill: none; stroke: var(--stu); stroke-width: 2; stroke-dasharray: 3 3; }
+.mptlbl { font: 12px var(--ui); fill: var(--stu); }
+
+/* ---- photo panel ---- */
+.photowrap { position: relative; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--paper); }
+.photowrap img { display: block; width: 100%; height: auto; }
+.photowrap.anchoring { cursor: crosshair; outline: 3px solid var(--stu); }
+.mark { position: absolute; transform: translate(-50%, -50%); width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.9); border: 2px solid var(--stu); font: 700 12px/18px var(--ui); text-align: center; color: var(--stu); pointer-events: none; }
+.mark.hl { background: var(--stu); color: #fff; }
+.photoempty { padding: 18px; color: var(--muted); font-size: 13px; }
+.photoempty ul { padding-left: 18px; margin: 8px 0; }
+.thumbs { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+.thumbs button { padding: 0; border: 2px solid transparent; border-radius: 5px; cursor: pointer; background: none; }
+.thumbs button[aria-pressed="true"] { border-color: var(--stu); }
+.thumbs img { width: 52px; height: 40px; object-fit: cover; border-radius: 3px; display: block; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.examples { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.examples .btn { width: 100%; justify-content: space-between; margin-top: 6px; }
+.examples .btn small { color: var(--muted); }
+
+/* ---- provenance system ---- */
+.prov-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; font-size: 12px; }
+.prov-legend div { padding: 5px 7px; border-radius: 5px; }
+.pl-ai { background: var(--ai-bg); color: var(--ai); border: 1px dashed var(--ai-line); }
+.pl-stu { background: var(--stu-bg); color: var(--stu); border: 1px solid var(--stu-line); }
+.pl-fact { background: var(--fact-bg); color: var(--fact); border: 1px solid var(--fact-line); }
+.card { border: 1px solid var(--rule); border-left-width: 4px; border-radius: 7px; padding: 10px 12px; margin: 10px 0; background: #fff; }
+.card.c-ai { border-left: 4px dashed var(--ai-line); }
+.card.c-stu { border-left-color: var(--stu); }
+.card.st-rejected { opacity: .6; }
+.card.st-rejected .ctl { display: none; }
+.cardhead { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 6px; }
+.cardhead .ttl { font-weight: 600; }
+.badge { font-size: 11.5px; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+.b-ai { background: var(--ai-bg); color: var(--ai); border: 1px dashed var(--ai-line); }
+.b-stu { background: var(--stu-bg); color: var(--stu); border: 1px solid var(--stu-line); }
+.b-rej { background: #f1f1f1; color: #666; border: 1px solid #ccc; }
+.conf { font-size: 11.5px; color: var(--ai); }
+.aibox { background: var(--ai-bg); border: 1px dashed var(--ai-line); border-radius: 5px; padding: 7px 9px; margin: 6px 0; font-size: 13px; }
+.aibox b { color: var(--ai); font-weight: 600; }
+.fact { background: var(--fact-bg); border-left: 3px solid var(--fact); border-radius: 0 5px 5px 0; padding: 7px 10px; margin: 8px 0; font-size: 13px;
+  background-image: repeating-linear-gradient(transparent 0 20px, rgba(36,101,74,.07) 20px 21px); }
+.fact .facthead { color: var(--fact); font-weight: 600; font-size: 12px; }
+.fact p { margin: 3px 0; }
+.ctl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin: 6px 0; }
+.ctl label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); }
+.ctl label.wide { grid-column: 1 / -1; }
+.ctl select, .ctl input { width: 100%; }
+.acts { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; margin-top: 6px; }
+.decide { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.note { background: var(--paper); border-radius: 6px; padding: 9px 11px; font-size: 13px; margin: 8px 0; }
+.guide { border: 1px solid var(--stu-line); background: var(--stu-bg); border-radius: 7px; padding: 9px 12px; margin-bottom: 12px; font-size: 13px; }
+.guide b { color: var(--stu); }
+.warnbox { background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 8px 11px; margin: 8px 0; font-size: 13px; }
+.okbox { background: var(--fact-bg); color: var(--fact); border-radius: 6px; padding: 8px 11px; margin: 8px 0; font-size: 13px; }
+.scope { display: flex; gap: 10px; align-items: flex-start; border-radius: 7px; padding: 9px 12px; margin: 8px 0; }
+.scope .dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 3px; flex: none; }
+.scope.green { background: #edf6f0; } .scope.green .dot { background: #2f8a57; }
+.scope.yellow { background: #fbf5e2; } .scope.yellow .dot { background: #c99a17; }
+.scope.red { background: #fbecea; } .scope.red .dot { background: #b8402f; }
+.comp { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+.radio { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.radio label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+table.pts { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.pts th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 4px; border-bottom: 1px solid var(--rule); }
+table.pts td { padding: 3px 4px; border-bottom: 1px solid var(--grid); }
+table.pts input[type=number] { width: 72px; } table.pts input[type=text] { width: 44px; }
+.srcsel { font-size: 12px; }
+.tag { font-size: 11px; padding: 0 6px; border-radius: 8px; }
+.tag-estimated { background: var(--ai-bg); color: var(--ai); } .tag-student { background: var(--stu-bg); color: var(--stu); } .tag-assumed, .tag-given { background: #eee; color: #555; }
+.asm { display: flex; gap: 6px; align-items: center; margin: 6px 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--rule); border-left-width: 4px; }
+.asm.c-ai { border-left: 4px dashed var(--ai-line); } .asm.c-stu { border-left-color: var(--stu); }
+.asm input[type=text] { flex: 1; min-width: 0; }
+.asm.st-rejected input { text-decoration: line-through; color: var(--muted); }
+.eq { background: #fff; border: 1px solid var(--rule); border-radius: 7px; padding: 9px 12px; margin: 10px 0; }
+.eq .eqhead { font-family: var(--math); font-size: 16px; }
+.eq .line { font-family: var(--math); font-size: 16px; margin: 4px 0 4px 14px; line-height: 1.7; }
+.eq .lab { font: 11.5px var(--ui); color: var(--muted); }
+.res { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.res td { padding: 6px 4px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.res td.v { font-family: var(--math); font-size: 16px; white-space: nowrap; }
+.hint { border-top: 1px dotted var(--rule); padding-top: 4px; margin-top: 4px; font-size: 13px; }
+.found { color: var(--ok); } .notfound { color: var(--warn); }
+.divider { border-top: 1px solid var(--rule); margin: 14px 0; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--rule); border-radius: 12px; padding: 2px 9px; font-size: 12.5px; background: #fff; cursor: pointer; }
+.clar { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; background: var(--paper); border-radius: 5px; margin: 4px 0; font-size: 13px; }
+.ext { border: 1px dashed #8a7ab8; border-radius: 7px; padding: 9px 12px; margin: 12px 0; background: #f6f3fb; }
+.ext .extlabel { color: #5b4a94; font-weight: 600; font-size: 12.5px; }
+.ext table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+.ext td { padding: 3px 4px; border-bottom: 1px solid #e3ddf0; vertical-align: top; }
+
+/* ---- workflow bar ---- */
+.flow { flex: none; height: 70px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--sheet); border-top: 1px solid var(--rule); }
+.groups { display: flex; flex: 1; gap: 0; overflow-x: auto; }
+.grp { display: flex; flex-direction: column; padding: 0 10px; border-left: 1px solid var(--rule); }
+.grp:first-child { border-left: 0; }
+.grp .gname { font-size: 11.5px; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.grp .gname::after { content: " →"; color: var(--rule); }
+.grp:last-child .gname::after { content: ""; }
+.grp .steps { display: flex; gap: 4px; margin-top: 3px; }
+.stepbtn { border: 1px solid var(--rule); background: #fff; border-radius: 14px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.stepbtn .n { font-family: var(--math); color: var(--muted); margin-right: 4px; }
+.stepbtn[aria-current="step"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.stepbtn[aria-current="step"] .n { color: #b9c6db; }
+.stepbtn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---- dialogs & toast ---- */
+dialog { max-width: 640px; border: 1px solid var(--rule); border-radius: 10px; padding: 18px 22px; color: var(--ink); }
+dialog::backdrop { background: rgba(29, 43, 69, .35); }
+dialog h2 { font-size: 18px; margin-bottom: 6px; }
+dialog p, dialog li { font-size: 14px; }
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 7px; z-index: 10; max-width: 80vw; }
+
+@media (max-width: 1560px) { .brand span { display: none; } }
+@media (max-width: 1100px) {
+  body { height: auto; display: block; }
+  .ws { grid-template-columns: 1fr; height: auto; }
+  #left, #right { border: 0; border-bottom: 1px solid var(--rule); }
+  #center { height: 70vh; }
+  .flow { height: auto; flex-wrap: wrap; padding: 8px; position: sticky; bottom: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><h1>Statics <b>Modeling Studio</b></h1><span>Real object → idealized model → free-body diagram → equilibrium</span></div>
+  <div class="seg" role="group" aria-label="Mode" id="modes"></div>
+  <div class="units" id="units"></div>
+  <button class="btn small" data-act="newobj">New object</button>
+  <button class="btn small" data-act="export">Export model</button>
+  <label class="btn small">Import<input type="file" accept="application/json,.json" hidden data-import></label>
+  <button class="btn small" data-act="about">About &amp; privacy</button>
+</header>
+<main class="ws">
+  <section id="left" class="panel" aria-label="Real object"></section>
+  <section id="center" aria-label="Engineering model">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="sheet"><svg id="diagram" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Engineering diagram"></svg><div id="diagempty" class="emptydiag" hidden></div></div>
+    <div class="legend" id="legend"></div>
+  </section>
+  <section id="right" class="panel" aria-label="Modeling decisions"></section>
+</main>
+<nav class="flow" aria-label="Workflow">
+  <button class="btn small" data-act="prev">Back</button>
+  <div class="groups" id="groups"></div>
+  <button class="btn small primary" data-act="next">Next</button>
+</nav>
+<dialog id="about">
+  <h2>About this prototype</h2>
+  <p>Statics Modeling Studio helps you turn a photographed object into an idealized engineering statics model. The AI proposes; you decide; statics determines the consequences. It extends the Statics Scavenger Hunt activity developed at Wentworth Institute of Technology by Kapil Gangwar and Gloria Ma.</p>
+  <h3>What works in this version</h3>
+  <ul>
+    <li>The full 2D workflow for a single rigid body, with the support types of Table 5-1 plus rough (frictional) contact.</li>
+    <li>Deterministic equation generation and solving, with checks for indeterminacy, improper constraints, mechanisms, slack cables, lift-off, and slip.</li>
+    <li>Guided, Practice, Challenge, and Exploration modes.</li>
+  </ul>
+  <h3>What is not connected yet</h3>
+  <ul>
+    <li>Live AI image analysis. The three worked examples use fixed, pre-written AI proposals. For your own photos you build the model yourself.</li>
+    <li>3D solving, multi-body frames and machines, and trusses.</li>
+  </ul>
+  <h3>Privacy</h3>
+  <p>Photos stay in this browser tab. They are resized on your device, which also removes embedded location data, and they are not uploaded anywhere. Exported model files do not include photos. Closing the tab discards everything that you have not exported.</p>
+  <p>When live AI analysis is added, photos will be sent to an AI provider through a course server, and this notice will say so before anything is sent.</p>
+  <p class="fine">Safety: never climb, lean out, or enter restricted areas to photograph a structure.</p>
+  <div class="acts"><button class="btn primary" data-act="closeabout">Close</button></div>
+</dialog>
+<script>
+/* ==== STATICS ENGINE (deterministic; no AI) ===================================
+   All quantities in SI internally: m, N, N/m, N·m. Angles in degrees, CCW from +x.
+   Positions carry a z slot (0 in 2D) so a 3D solver can reuse the structure.
+============================================================================== */
+const Statics = (function () {
+  const DEG = Math.PI / 180;
+
+  /* ---- Ontology: Table 5-1 (2D supports); numbering kept for cross-reference ---- */
+  const ONT2D = {
+    cable: {
+      ref: '5-1 (1)', name: 'Cable', dirLabel: 'Cable direction, from the body toward the anchor',
+      unknowns: [{ role: 'axial', sense: 'tension' }],
+      prevents: 'motion of the attachment point away from the anchor, along the cable',
+      allows: 'everything else; a cable can only pull',
+      explain: 'A cable can only pull. It supplies one unknown: a tension force acting away from the body along the known cable direction.'
+    },
+    link: {
+      ref: '5-1 (2)', name: 'Weightless link (two-force member)', dirLabel: 'Link axis direction (assumed positive sense)',
+      unknowns: [{ role: 'axial', sense: 'free' }],
+      prevents: 'translation along the link axis',
+      allows: 'rotation, and motion perpendicular to the link',
+      explain: 'A weightless link pinned at both ends is a two-force member, so the force it transmits acts along its axis. One unknown; it may push or pull.'
+    },
+    roller: {
+      ref: '5-1 (3)', name: 'Roller', dirLabel: 'Normal to the surface, pointing into the body',
+      unknowns: [{ role: 'normal', sense: 'compression' }],
+      prevents: 'translation into the supporting surface',
+      allows: 'rotation, and rolling along the surface',
+      explain: 'A roller only prevents motion into the surface it rolls on. One unknown: a force perpendicular to that surface at the contact point.'
+    },
+    rocker: {
+      ref: '5-1 (4)', name: 'Rocker', dirLabel: 'Normal to the surface, pointing into the body',
+      unknowns: [{ role: 'normal', sense: 'compression' }],
+      prevents: 'translation into the supporting surface',
+      allows: 'rotation, and rocking along the surface',
+      explain: 'A rocker behaves like a roller: one unknown force perpendicular to the supporting surface at the point of contact.'
+    },
+    smooth: {
+      ref: '5-1 (5)', name: 'Smooth contacting surface', dirLabel: 'Normal to the surface, pointing into the body',
+      unknowns: [{ role: 'normal', sense: 'compression' }],
+      prevents: 'penetration into the surface',
+      allows: 'sliding along the surface (no friction) and rotation',
+      explain: 'A smooth surface can only push. With friction neglected there is one unknown: a normal force perpendicular to the surface at the contact point.'
+    },
+    slot: {
+      ref: '5-1 (6)', name: 'Roller or pin in confined smooth slot', dirLabel: 'Perpendicular to the slot (assumed positive sense)',
+      unknowns: [{ role: 'normal', sense: 'free' }],
+      prevents: 'motion perpendicular to the slot, in either direction',
+      allows: 'sliding along the slot and rotation',
+      explain: 'The slot confines the pin on both sides, so the single unknown force acts perpendicular to the slot and may point either way.'
+    },
+    collar_pin: {
+      ref: '5-1 (7)', name: 'Member pin-connected to collar on smooth rod', dirLabel: 'Perpendicular to the rod (assumed positive sense)',
+      unknowns: [{ role: 'normal', sense: 'free' }],
+      prevents: 'motion perpendicular to the rod',
+      allows: 'sliding along the smooth rod and rotation about the pin',
+      explain: 'The collar slides freely along the smooth rod and the pin allows rotation, so only a force perpendicular to the rod remains. One unknown.'
+    },
+    pin: {
+      ref: '5-1 (8)', name: 'Smooth pin or hinge', dirLabel: null,
+      unknowns: [{ role: 'x' }, { role: 'y' }],
+      prevents: 'translation in x and in y',
+      allows: 'rotation about the pin',
+      explain: 'A pin prevents translation in both directions but allows rotation. Two unknowns: two force components, and no reaction moment.'
+    },
+    collar_fixed: {
+      ref: '5-1 (9)', name: 'Member fixed-connected to collar on smooth rod', dirLabel: 'Perpendicular to the rod (assumed positive sense)',
+      unknowns: [{ role: 'normal', sense: 'free' }, { role: 'moment' }],
+      prevents: 'motion perpendicular to the rod, and rotation',
+      allows: 'sliding along the smooth rod',
+      explain: 'The rigid collar connection prevents rotation and motion perpendicular to the rod. Two unknowns: a force perpendicular to the rod and a couple moment.'
+    },
+    fixed: {
+      ref: '5-1 (10)', name: 'Fixed support', dirLabel: null,
+      unknowns: [{ role: 'x' }, { role: 'y' }, { role: 'moment' }],
+      prevents: 'translation in x and y, and rotation',
+      allows: 'nothing, in the rigid-body idealization',
+      explain: 'A fixed support prevents both translations and rotation. Three unknowns: two force components and a couple moment.'
+    },
+    rough: {
+      ref: 'Friction (Ch. 8)', name: 'Rough contacting surface (friction)', dirLabel: 'Normal to the surface, pointing into the body',
+      unknowns: [{ role: 'normal', sense: 'compression' }, { role: 'friction' }],
+      prevents: 'penetration and, up to the friction limit, sliding',
+      allows: 'rotation; sliding once friction is overcome',
+      explain: 'A rough surface pushes normal to itself and can also resist sliding through friction. Two unknowns: normal force N and friction force F along the surface, with |F| ≤ μs·N if the body does not slip.'
+    }
+  };
+
+  /* ---- Table 5-2 (3D): reference data for Exploration mode; no 3D solver in V1 ---- */
+  const ONT3D = [
+    { ref: '5-2 (1)', name: 'Cable', n: 1, comps: 'Tension along the known cable direction, away from the body' },
+    { ref: '5-2 (2)', name: 'Smooth surface support', n: 1, comps: 'Normal force perpendicular to the surface' },
+    { ref: '5-2 (3)', name: 'Roller', n: 1, comps: 'Normal force perpendicular to the surface' },
+    { ref: '5-2 (4)', name: 'Ball and socket', n: 3, comps: 'Three force components Fx, Fy, Fz' },
+    { ref: '5-2 (5)', name: 'Single journal bearing', n: 4, comps: 'Two force and two couple-moment components perpendicular to the shaft; the shaft may slide axially', note: true },
+    { ref: '5-2 (6)', name: 'Single journal bearing, square shaft', n: 5, comps: 'Two force and three couple-moment components', note: true },
+    { ref: '5-2 (7)', name: 'Single thrust bearing', n: 5, comps: 'Three force components (axial motion prevented) and two couple-moment components', note: true },
+    { ref: '5-2 (8)', name: 'Single smooth pin', n: 5, comps: 'Three force and two couple-moment components', note: true },
+    { ref: '5-2 (9)', name: 'Single hinge', n: 5, comps: 'Three force and two couple-moment components', note: true },
+    { ref: '5-2 (10)', name: 'Fixed support', n: 6, comps: 'Three force and three couple-moment components' }
+  ];
+
+  const clean = (v) => (Math.abs(v) < 1e-12 ? 0 : v);
+  const unit = (deg) => [clean(Math.cos(deg * DEG)), clean(Math.sin(deg * DEG))];
+
+  function indexPoints(model) {
+    const m = {};
+    for (const p of model.points) m[p.id] = p;
+    return m;
+  }
+
+  /* ---- Unknowns generated by one support: the "engineering consequence" ---- */
+  function supportUnknowns(s, P, label) {
+    const t = ONT2D[s.type];
+    if (!t) return [];
+    const out = [];
+    const e = unit(s.dirDeg || 0);
+    const aligned = Math.abs(Math.abs(e[0]) - 1) < 1e-9 ? 'x' : Math.abs(Math.abs(e[1]) - 1) < 1e-9 ? 'y' : null;
+    for (const u of t.unknowns) {
+      const base = { supportId: s.id, P: [P[0], P[1], 0], role: u.role, sense: u.sense || 'free' };
+      if (u.role === 'x') out.push({ ...base, kind: 'F', e: [1, 0], sym: { b: label, s: 'x' } });
+      else if (u.role === 'y') out.push({ ...base, kind: 'F', e: [0, 1], sym: { b: label, s: 'y' } });
+      else if (u.role === 'moment') out.push({ ...base, kind: 'M', e: null, sym: { b: 'M', s: label } });
+      else if (u.role === 'axial') out.push({ ...base, kind: 'F', e, sym: { b: s.type === 'cable' ? 'T' : 'F', s: label } });
+      else if (u.role === 'normal') {
+        const pinLike = ['roller', 'rocker', 'slot', 'collar_pin', 'collar_fixed'].includes(s.type);
+        out.push({ ...base, kind: 'F', e, sym: pinLike && aligned ? { b: label, s: aligned } : { b: 'N', s: label } });
+      } else if (u.role === 'friction') {
+        if (s.frictionMode === 'neglect') continue;
+        const et = [clean(e[1]), clean(-e[0])]; // tangent: normal rotated −90°
+        out.push({ ...base, kind: 'F', e: et, sym: { b: 'F', s: label }, sense: 'free', mu: s.mu });
+      }
+    }
+    return out;
+  }
+
+  /* ---- Loads → point forces and couples (distributed → resultant) ---- */
+  function resolveLoads(model) {
+    const pts = indexPoints(model);
+    const out = [], warnings = [];
+    for (const L of model.loads) {
+      if (L.excluded) continue;
+      if (!(isFinite(L.mag) || L.kind === 'dist')) { warnings.push(`Load ${L.label} has no magnitude.`); continue; }
+      if (L.kind === 'couple') { out.push({ id: L.id, label: L.label, kind: 'couple', M: L.mag, P: pts[L.pointId] ? [pts[L.pointId].x, pts[L.pointId].y, 0] : null }); continue; }
+      if (L.kind === 'dist') {
+        const A = pts[L.pointId], B = pts[L.p2Id];
+        if (!A || !B) { warnings.push(`Distributed load ${L.label} needs two valid end points.`); continue; }
+        const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy);
+        const w1 = +L.w1 || 0, w2 = +L.w2 || 0;
+        if (len < 1e-12) { warnings.push(`Distributed load ${L.label} has zero length.`); continue; }
+        if (w1 < 0 || w2 < 0) warnings.push(`Distributed load ${L.label}: enter intensities as non-negative values and set the direction with the angle.`);
+        const R = 0.5 * (w1 + w2) * len;
+        const xbar = Math.abs(w1 + w2) < 1e-15 ? len / 2 : (len * (w1 + 2 * w2)) / (3 * (w1 + w2));
+        const e = unit(L.dirDeg ?? 270);
+        out.push({ id: L.id, label: 'R_' + L.label, kind: 'force', fromDist: true, distLabel: L.label,
+          P: [A.x + (dx * xbar) / len, A.y + (dy * xbar) / len, 0], F: [R * e[0], R * e[1]], mag: R,
+          dirDeg: L.dirDeg ?? 270, len, xbar, w1, w2, A: [A.x, A.y], B: [B.x, B.y] });
+        continue;
+      }
+      const A = pts[L.pointId];
+      if (!A) { warnings.push(`Load ${L.label} is not attached to a valid point.`); continue; }
+      const dir = L.kind === 'weight' ? 270 : (L.dirDeg ?? 270);
+      const e = unit(dir);
+      out.push({ id: L.id, label: L.label, kind: 'force', isWeight: L.kind === 'weight', P: [A.x, A.y, 0], F: [L.mag * e[0], L.mag * e[1]], mag: L.mag, dirDeg: dir });
+    }
+    return { loads: out, warnings };
+  }
+
+  const momentArm = (P, O, e) => clean((P[0] - O[0]) * e[1] - (P[1] - O[1]) * e[0]);
+
+  /* ---- Reduced row echelon form, partial pivoting ---- */
+  function rref(M, nCols, tol) {
+    const pivots = [];
+    let r = 0;
+    for (let c = 0; c < nCols && r < M.length; c++) {
+      let best = r;
+      for (let i = r + 1; i < M.length; i++) if (Math.abs(M[i][c]) > Math.abs(M[best][c])) best = i;
+      if (Math.abs(M[best][c]) < tol) continue;
+      [M[r], M[best]] = [M[best], M[r]];
+      const pv = M[r][c];
+      for (let j = 0; j <= nCols; j++) M[r][j] /= pv;
+      for (let i = 0; i < M.length; i++) {
+        if (i === r) continue;
+        const f = M[i][c];
+        if (f !== 0) for (let j = 0; j <= nCols; j++) M[i][j] -= f * M[r][j];
+      }
+      pivots.push(c);
+      r++;
+    }
+    return pivots;
+  }
+
+  /* ---- Main analysis ---- */
+  function analyze(model, opts = {}) {
+    const pts = indexPoints(model);
+    const warnings = [];
+    const unknowns = [];
+    for (const s of model.supports) {
+      if (s.excluded) continue;
+      const P = pts[s.pointId];
+      if (!P) { warnings.push('A support is not attached to a valid point.'); continue; }
+      if (!ONT2D[s.type]) { warnings.push(`The connection at ${P.label} has no idealization selected yet, so it contributes no reactions.`); continue; }
+      unknowns.push(...supportUnknowns(s, [P.x, P.y], P.label));
+    }
+    const rl = resolveLoads(model);
+    warnings.push(...rl.warnings);
+    const loads = rl.loads;
+
+    let Opt = opts.momentPointId && pts[opts.momentPointId];
+    if (!Opt) {
+      const cands = model.supports.filter((s) => !s.excluded && ONT2D[s.type] && pts[s.pointId]);
+      cands.sort((a, b) => ONT2D[b.type].unknowns.length - ONT2D[a.type].unknowns.length);
+      Opt = cands.length ? pts[cands[0].pointId] : model.points[0];
+    }
+    const O = Opt ? [Opt.x, Opt.y, 0] : [0, 0, 0];
+
+    const n = unknowns.length;
+    const A = [[], [], []];
+    for (const u of unknowns) {
+      if (u.kind === 'M') { A[0].push(0); A[1].push(0); A[2].push(1); }
+      else { A[0].push(u.e[0]); A[1].push(u.e[1]); A[2].push(momentArm(u.P, O, u.e)); }
+    }
+    const known = [0, 0, 0];
+    for (const L of loads) {
+      if (L.kind === 'couple') known[2] += L.M;
+      else { known[0] += L.F[0]; known[1] += L.F[1]; known[2] += clean((L.P[0] - O[0]) * L.F[1] - (L.P[1] - O[1]) * L.F[0]); }
+    }
+    const b = known.map((k) => -k);
+
+    // scales so rank decisions do not depend on the unit system
+    let Lc = 1;
+    if (model.points.length) {
+      const xs = model.points.map((p) => p.x), ys = model.points.map((p) => p.y);
+      Lc = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+      if (!(Lc > 1e-12)) Lc = 1;
+    }
+    let Fs = 0;
+    for (const L of loads) Fs = Math.max(Fs, L.kind === 'couple' ? Math.abs(L.M) / Lc : Math.hypot(L.F[0], L.F[1]));
+    if (!(Fs > 1e-12)) Fs = 1;
+
+    const rowScale = [1, 1, 1 / Lc];
+    const colScale = [];
+    for (let j = 0; j < n; j++) {
+      let m = 0;
+      for (let i = 0; i < 3; i++) m = Math.max(m, Math.abs(A[i][j] * rowScale[i]));
+      colScale.push(m > 1e-15 ? m : 1);
+    }
+    const M = [0, 1, 2].map((i) => {
+      const row = [];
+      for (let j = 0; j < n; j++) row.push((A[i][j] * rowScale[i]) / colScale[j]);
+      row.push((b[i] * rowScale[i]) / Fs);
+      return row;
+    });
+
+    let status, rank = 0, inconsistent = false, hadamard = null;
+    const solution = new Array(n).fill(null);
+    const relations = [];
+    if (n === 0) status = 'unsupported';
+    else {
+      const R = M.map((r) => r.slice());
+      const pivots = rref(R, n, 1e-9);
+      rank = pivots.length;
+      for (let i = rank; i < 3; i++) if (Math.abs(R[i][n]) > 1e-7) inconsistent = true;
+      const free = [];
+      for (let j = 0; j < n; j++) if (!pivots.includes(j)) free.push(j);
+      if (!inconsistent) {
+        pivots.forEach((p, i) => {
+          const dep = free.filter((f) => Math.abs(R[i][f]) > 1e-9);
+          const rhs = (R[i][n] * Fs) / colScale[p];
+          if (!dep.length) solution[p] = clean(rhs);
+          else relations.push({ lead: p, terms: dep.map((f) => ({ idx: f, coef: (R[i][f] * colScale[f]) / colScale[p] })), rhs: clean(rhs) });
+        });
+      }
+      const proper = rank === 3;
+      if (inconsistent) status = 'mechanism';
+      else if (!proper) status = free.length ? 'partial_indeterminate' : 'partial';
+      else status = free.length ? 'indeterminate' : 'determinate';
+      if (proper && n === 3) {
+        const S = M.map((r) => r.slice(0, 3));
+        const det = S[0][0] * (S[1][1] * S[2][2] - S[1][2] * S[2][1]) - S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) + S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);
+        let prod = 1;
+        for (let j = 0; j < 3; j++) prod *= Math.hypot(S[0][j], S[1][j], S[2][j]);
+        hadamard = Math.abs(det) / prod;
+      }
+    }
+    const checks = runChecks(unknowns, solution, loads, model, O, Lc, Fs);
+    return { unknowns, loads, O, momentPoint: Opt ? Opt.id : null, A, b, known, rank, n, status, inconsistent,
+      degree: Math.max(0, n - rank), solution, relations, hadamard, checks, warnings, Lc, Fs };
+  }
+
+  /* ---- Physical and numerical checks after solving ---- */
+  function runChecks(unknowns, sol, loads, model, O, Lc, Fs) {
+    const checks = [];
+    const tol = 1e-9 * Fs;
+    unknowns.forEach((u, i) => {
+      const v = sol[i];
+      if (v === null) return;
+      if (u.sense === 'compression' && v < -tol)
+        checks.push({ ok: false, code: 'LIFT_OFF', idx: i, msg: 'is negative, so the surface would have to pull on the body. Contact would be lost here: this idealization is inconsistent with the loading.' });
+      if (u.sense === 'tension' && v < -tol)
+        checks.push({ ok: false, code: 'SLACK', idx: i, msg: 'is negative, so the cable would have to push. A cable cannot push; it would go slack under this loading.' });
+      if (u.role === 'friction' && u.mu !== undefined && u.mu !== null && u.mu !== '' && isFinite(u.mu)) {
+        const ni = unknowns.findIndex((w) => w.supportId === u.supportId && w.role === 'normal');
+        const N = ni >= 0 ? sol[ni] : null;
+        if (N !== null) {
+          const lim = u.mu * N, ok = Math.abs(v) <= lim + tol;
+          checks.push({ ok, code: ok ? 'FRICTION_OK' : 'SLIPS', idx: i, ni, need: Math.abs(v), lim,
+            msg: ok ? 'does not exceed μs·N, so the body does not slip at this contact.' : 'exceeds μs·N, so static equilibrium cannot be maintained: the body would slip here.' });
+        }
+      }
+    });
+    if (unknowns.length && sol.every((v) => v !== null)) {
+      let O2 = O, far = -1;
+      for (const p of model.points) { const d = Math.hypot(p.x - O[0], p.y - O[1]); if (d > far) { far = d; O2 = [p.x, p.y, 0]; } }
+      let fx = 0, fy = 0, m = 0;
+      const add = (P, F) => { fx += F[0]; fy += F[1]; m += (P[0] - O2[0]) * F[1] - (P[1] - O2[1]) * F[0]; };
+      unknowns.forEach((u, i) => { if (u.kind === 'M') m += sol[i]; else add(u.P, [u.e[0] * sol[i], u.e[1] * sol[i]]); });
+      for (const L of loads) { if (L.kind === 'couple') m += L.M; else add(L.P, L.F); }
+      const rel = Math.max(Math.abs(fx), Math.abs(fy), Math.abs(m) / Lc) / Fs;
+      checks.push({ ok: rel < 1e-8, code: 'RESIDUAL', O2, res: [fx, fy, m], rel,
+        msg: rel < 1e-8 ? 'Substituting the solution back gives ΣFx = 0, ΣFy = 0, and ΣM = 0 about a second, independent point.'
+          : 'Substituting the solution back does not satisfy equilibrium. This indicates an engine error; please report it.' });
+    }
+    return checks;
+  }
+
+  return { ONT2D, ONT3D, analyze, supportUnknowns, resolveLoads, momentArm, unit };
+})();
+if (typeof module !== 'undefined') module.exports = Statics;
+
+/* ==== WORKED EXAMPLES = SIMULATED AI PROPOSALS (Phase 1) =====================
+   Each example stands in for what a vision model would return in Phase 5.
+   Illustrations are drawings standing in for student photographs.
+   All values SI. Anchors (u, v) are normalized image coordinates.
+============================================================================== */
+const SAMPLES = (function () {
+  const svg = (body) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="800" height="600">${body}</svg>`);
+
+  const ladderArt = svg(`
+    <rect width="400" height="300" fill="#e9eef2"/>
+    <rect x="330" y="0" width="70" height="262" fill="#cfd6dc"/><line x1="330" y1="0" x2="330" y2="262" stroke="#8a96a3" stroke-width="2"/>
+    <rect x="0" y="262" width="400" height="38" fill="#b9b2a6"/><line x1="0" y1="262" x2="400" y2="262" stroke="#7d756a" stroke-width="2"/>
+    <g stroke="#8c96a0" stroke-width="7" stroke-linecap="round"><line x1="200" y1="260" x2="320" y2="52"/><line x1="222" y1="262" x2="333" y2="70"/></g>
+    <g stroke="#a7b0b8" stroke-width="4">${[0.1, 0.22, 0.34, 0.46, 0.58, 0.7, 0.82, 0.94].map((t) => {
+      const x1 = 200 + 120 * t, y1 = 260 - 208 * t, x2 = 222 + 111 * t, y2 = 262 - 192 * t; return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`; }).join('')}</g>
+    <rect x="194" y="256" width="34" height="8" rx="2" fill="#333"/>
+    <text x="12" y="22" font-family="sans-serif" font-size="12" fill="#55606b">Illustration standing in for a student photo</text>`);
+
+  const craneArt = svg(`
+    <rect width="400" height="300" fill="#eef0ea"/>
+    <rect x="0" y="0" width="60" height="300" fill="#c9c4b8"/><line x1="60" y1="0" x2="60" y2="300" stroke="#8b8577" stroke-width="2"/>
+    <rect x="54" y="170" width="18" height="40" fill="#6f7a84"/><circle cx="62" cy="190" r="4" fill="#ddd"/>
+    <rect x="54" y="38" width="16" height="24" fill="#6f7a84"/>
+    <rect x="62" y="182" width="282" height="16" fill="#e0a526" stroke="#8a6512"/>
+    <line x1="270" y1="186" x2="66" y2="50" stroke="#5b6670" stroke-width="5"/>
+    <rect x="292" y="198" width="26" height="12" fill="#444"/>
+    <line x1="305" y1="210" x2="305" y2="246" stroke="#333" stroke-width="2"/>
+    <path d="M299 246 q6 12 12 0" fill="none" stroke="#333" stroke-width="3"/>
+    <rect x="280" y="252" width="50" height="36" fill="#7a5a3a"/>
+    <text x="80" y="22" font-family="sans-serif" font-size="12" fill="#55606b">Illustration standing in for a student photo</text>`);
+
+  const bikeArt = svg(`
+    <rect width="400" height="300" fill="#edf1ee"/>
+    <rect x="0" y="280" width="400" height="20" fill="#9fa39b"/>
+    <g fill="none" stroke="#2d2d2d" stroke-width="6"><circle cx="110" cy="220" r="58"/><circle cx="300" cy="220" r="58"/></g>
+    <g stroke="#bbb" stroke-width="1">${Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6; return `<line x1="110" y1="220" x2="${110 + 55 * Math.cos(a)}" y2="${220 + 55 * Math.sin(a)}"/><line x1="300" y1="220" x2="${300 + 55 * Math.cos(a)}" y2="${220 + 55 * Math.sin(a)}"/>`; }).join('')}</g>
+    <g fill="none" stroke="#2f6c8f" stroke-width="6" stroke-linejoin="round"><path d="M110 220 L185 225 L170 140 Z"/><path d="M185 225 L262 140 L170 140"/><path d="M262 140 L300 220"/></g>
+    <line x1="170" y1="140" x2="165" y2="118" stroke="#333" stroke-width="5"/><rect x="146" y="110" width="40" height="8" rx="4" fill="#222"/>
+    <line x1="262" y1="140" x2="256" y2="112" stroke="#333" stroke-width="5"/><line x1="244" y1="110" x2="272" y2="112" stroke="#222" stroke-width="5"/>
+    <circle cx="185" cy="225" r="12" fill="none" stroke="#555" stroke-width="3"/>
+    <text x="12" y="22" font-family="sans-serif" font-size="12" fill="#55606b">Illustration standing in for a student photo</text>`);
+
+  const LADDER = {
+    key: 'ladder', title: 'Ladder against a wall', art: ladderArt,
+    objectName: 'Ladder',
+    description: 'Aluminum ladder leaning against a smooth vertical wall and rough horizontal floor. No one is standing on it. Assume static equilibrium.',
+    units: { system: 'SI', len: 'm', force: 'N' },
+    ai: {
+      scope: { rating: 'green', reason: 'A single straight member with two clear contacts. A rigid-body model with standard contact supports should fit.' },
+      dim: { rec: '2D', reason: 'The ladder, its two contacts, and its weight all lie in one vertical plane perpendicular to the wall, so a 2D rigid-body model is recommended.' },
+      components: [
+        { name: 'Side rails and rungs', role: 'One slender rigid body (the ladder)', conf: 'likely' },
+        { name: 'Feet on the floor', role: 'Contact with the floor at A', conf: 'likely' },
+        { name: 'Top ends on the wall', role: 'Contact with the wall at B', conf: 'likely' },
+        { name: 'Rubber feet pads', role: 'Detail ignored; they only affect friction', conf: 'possible' }
+      ],
+      questions: ['Is anyone standing on the ladder? A person would add a load and change the answer.', 'Do you know the ladder’s mass? It is often printed on a label on the rail.'],
+      model: {
+        points: [
+          { id: 'A', label: 'A', x: 0, y: 0, src: 'estimated', anchor: { u: 0.528, v: 0.873 } },
+          { id: 'B', label: 'B', x: 2, y: 3.4641, src: 'estimated', anchor: { u: 0.818, v: 0.2 } },
+          { id: 'G', label: 'G', x: 1, y: 1.7321, src: 'estimated', anchor: { u: 0.67, v: 0.53 } }
+        ],
+        body: { outline: ['A', 'B'], closed: false, cg: 'G' },
+        supports: [
+          { id: 'sA', pointId: 'A', type: 'rough', dirDeg: 90, mu: 0.3, frictionMode: 'unknown',
+            prov: { conf: 'likely', why: 'The feet rest on the floor, and your description says the floor is rough, so friction can act along it as well as a normal force. μs = 0.3 is a placeholder estimate.' } },
+          { id: 'sB', pointId: 'B', type: 'smooth', dirDeg: 180,
+            prov: { conf: 'likely', why: 'The top of the ladder rests against the wall, and your description says the wall is smooth, so only a normal force perpendicular to the wall acts.' } }
+        ],
+        loads: [
+          { id: 'lW', label: 'W', kind: 'weight', pointId: 'G', mag: 120, src: 'estimated',
+            prov: { conf: 'possible', why: 'Typical 4 m aluminum ladders have a mass of roughly 10–15 kg, so about 120 N. Replace with the label value if you have it.' } }
+        ],
+        assumptions: [
+          { id: 'a1', text: 'The ladder is a rigid body.', prov: { conf: 'likely' } },
+          { id: 'a2', text: 'The ladder is uniform, so its weight acts at its midpoint G.', prov: { conf: 'likely' } },
+          { id: 'a3', text: 'The wall is smooth (no friction at B).', prov: { conf: 'likely', why: 'From your description.' } },
+          { id: 'a4', text: 'The floor is rough (friction can act at A).', prov: { conf: 'likely', why: 'From your description.' } },
+          { id: 'a5', text: 'The ladder is in static equilibrium.', prov: { conf: 'likely' } },
+          { id: 'a6', text: 'The ladder, its loads, and its contacts lie in one vertical plane.', prov: { conf: 'likely' } },
+          { id: 'a7', text: 'Length (4 m) and angle (60°) are estimated from the photo; camera perspective can distort the angle. Measure them if you can.', prov: { conf: 'possible' } }
+        ]
+      }
+    }
+  };
+
+  const CRANE = {
+    key: 'crane', title: 'Wall-mounted jib crane', art: craneArt,
+    objectName: 'Jib crane',
+    description: 'Wall-mounted jib crane in a workshop. A horizontal boom is held up by a diagonal tie rod. The hoist carries a rated load of 10 kN near the end of the boom.',
+    units: { system: 'SI', len: 'm', force: 'kN' },
+    ai: {
+      scope: { rating: 'yellow', reason: 'The structure fits a single-rigid-body model with a two-force member, but the connection at A cannot be classified from the photo. Your input is needed.' },
+      dim: { rec: '2D', reason: 'The boom, tie rod, and hoist load lie in one vertical plane, so a 2D model is recommended. Swinging the boom sideways would make it 3D.' },
+      components: [
+        { name: 'Horizontal boom', role: 'Rigid body to isolate', conf: 'likely' },
+        { name: 'Diagonal tie rod', role: 'Weightless link (two-force member) between B and the wall at D', conf: 'likely' },
+        { name: 'Boom-to-wall bracket at A', role: 'Connection; type unclear', conf: 'cannot' },
+        { name: 'Trolley, hoist, and suspended load', role: 'Applied load at H', conf: 'likely' },
+        { name: 'Wall', role: 'Ground; outside the system', conf: 'likely' }
+      ],
+      questions: ['Does a single pin pass through the bracket at A, or is the boom bolted to a plate with several bolts?', 'Where along the boom is the trolley when the rated load is lifted?'],
+      model: {
+        points: [
+          { id: 'A', label: 'A', x: 0, y: 0, src: 'estimated', anchor: { u: 0.155, v: 0.633 } },
+          { id: 'G', label: 'G', x: 2, y: 0, src: 'estimated', anchor: { u: 0.5, v: 0.633 } },
+          { id: 'B', label: 'B', x: 3, y: 0, src: 'estimated', anchor: { u: 0.675, v: 0.62 } },
+          { id: 'H', label: 'H', x: 3.5, y: 0, src: 'estimated', anchor: { u: 0.763, v: 0.68 } },
+          { id: 'C', label: 'C', x: 4, y: 0, src: 'estimated', anchor: { u: 0.86, v: 0.633 } },
+          { id: 'D', label: 'D', x: 0, y: 2, src: 'estimated', anchor: { u: 0.165, v: 0.167 } }
+        ],
+        body: { outline: ['A', 'C'], closed: false, cg: 'G' },
+        supports: [
+          { id: 'sA', pointId: 'A', type: null, candidates: ['pin', 'fixed'], symbolDeg: 180,
+            prov: { conf: 'cannot', why: 'The photo cannot show what is inside the bracket. A single pin through a clevis lets the boom rotate (pin). A plate with several bolts may resist rotation (fixed). These idealizations give different numbers of unknowns.' } },
+          { id: 'sB', pointId: 'B', type: 'link', towardId: 'D', dirDeg: 146.31,
+            prov: { conf: 'likely', why: 'The tie rod is slender, pinned at both ends, and carries no load between them, so it acts as a two-force member: its force is directed along the line from B to D.' } }
+        ],
+        loads: [
+          { id: 'lW', label: 'W', kind: 'weight', pointId: 'G', mag: 1500, src: 'estimated',
+            prov: { conf: 'possible', why: 'Estimated boom weight of about 1.5 kN for a 4 m steel boom, acting at its midpoint.' } },
+          { id: 'lP', label: 'P', kind: 'force', pointId: 'H', mag: 10000, dirDeg: 270, src: 'student',
+            prov: { conf: 'likely', why: 'Rated load of 10 kN from your description, hanging vertically from the trolley at H.' } }
+        ],
+        assumptions: [
+          { id: 'a1', text: 'The boom is a rigid body.', prov: { conf: 'likely' } },
+          { id: 'a2', text: 'The tie rod’s weight is negligible, so it acts as a two-force member.', prov: { conf: 'likely' } },
+          { id: 'a3', text: 'The boom’s weight acts at its midpoint G.', prov: { conf: 'likely' } },
+          { id: 'a4', text: 'The load hangs vertically and is not swinging (static).', prov: { conf: 'likely' } },
+          { id: 'a5', text: 'Pins are frictionless.', prov: { conf: 'likely' } },
+          { id: 'a6', text: 'The boom stays in one vertical plane.', prov: { conf: 'likely' } }
+        ]
+      }
+    }
+  };
+
+  const BIKE = {
+    key: 'bike', title: 'Parked bicycle', art: bikeArt,
+    objectName: 'Bicycle',
+    description: 'A bicycle parked on level pavement. No rider is present. The bicycle is supported by both tires.',
+    units: { system: 'SI', len: 'm', force: 'N' },
+    ai: {
+      scope: { rating: 'green', reason: 'Visually complex, but for vertical loads the whole bicycle can be treated as one rigid body on two ground contacts.' },
+      dim: { rec: '2D', reason: 'The weight and both tire contacts lie in the bicycle’s own vertical plane, so a 2D side-view model is recommended. Sideways tipping is a 3D question this model does not address.' },
+      components: [
+        { name: 'Frame, wheels, spokes, chain, pedals, handlebars, saddle', role: 'All lumped into one rigid body', conf: 'likely' },
+        { name: 'Rear tire contact patch', role: 'Ground contact at A', conf: 'likely' },
+        { name: 'Front tire contact patch', role: 'Ground contact at B', conf: 'likely' },
+        { name: 'Brake and shifter cables', role: 'Internal to the body; ignored', conf: 'likely' },
+        { name: 'Bearings and hubs', role: 'Internal; ignored because the wheels do not turn', conf: 'likely' }
+      ],
+      questions: ['What keeps the bicycle upright: a kickstand, a wall, or a rack? That support is out of the side-view plane.', 'Do you want to include friction at the tires? It changes the reaction model.'],
+      model: {
+        points: [
+          { id: 'A', label: 'A', x: 0, y: 0, src: 'estimated', anchor: { u: 0.275, v: 0.933 } },
+          { id: 'S', label: 'S', x: 0.33, y: 0.77, src: 'estimated', anchor: { u: 0.425, v: 0.467 } },
+          { id: 'H', label: 'H', x: 0.85, y: 0.77, src: 'estimated', anchor: { u: 0.655, v: 0.467 } },
+          { id: 'B', label: 'B', x: 1.05, y: 0, src: 'estimated', anchor: { u: 0.75, v: 0.933 } },
+          { id: 'G', label: 'G', x: 0.45, y: 0.6, src: 'estimated', anchor: { u: 0.48, v: 0.6 } }
+        ],
+        body: { outline: ['A', 'S', 'H', 'B'], closed: true, cg: 'G' },
+        supports: [
+          { id: 'sA', pointId: 'A', type: 'smooth', dirDeg: 90,
+            prov: { conf: 'likely', why: 'The rear tire rests on level pavement. With no horizontal loads, friction is not needed in this model, so a normal force alone is proposed.' } },
+          { id: 'sB', pointId: 'B', type: 'smooth', dirDeg: 90,
+            prov: { conf: 'likely', why: 'The front tire rests on level pavement. Same reasoning as at A.' } }
+        ],
+        loads: [
+          { id: 'lW', label: 'W', kind: 'weight', pointId: 'G', mag: 130, src: 'estimated',
+            prov: { conf: 'possible', why: 'Typical adult bicycles have a mass of about 12–15 kg, so roughly 130 N. The location of G is estimated from the frame shape.' } }
+        ],
+        assumptions: [
+          { id: 'a1', text: 'The entire bicycle is one rigid body.', prov: { conf: 'likely' } },
+          { id: 'a2', text: 'The wheels do not rotate (parked, static).', prov: { conf: 'likely' } },
+          { id: 'a3', text: 'No rider or cargo.', prov: { conf: 'likely', why: 'From your description.' } },
+          { id: 'a4', text: 'The pavement is level.', prov: { conf: 'likely' } },
+          { id: 'a5', text: 'Friction at the tires is neglected because no horizontal loads act.', prov: { conf: 'possible' } },
+          { id: 'a6', text: 'Something outside this side-view model keeps the bicycle upright; sideways tipping is not analyzed.', prov: { conf: 'likely' } }
+        ]
+      }
+    }
+  };
+
+  return { ladder: LADDER, crane: CRANE, bike: BIKE };
+})();
+if (typeof module !== 'undefined') module.exports = SAMPLES;
+
+/* ==== COMPARISON, HINTS, CHALLENGE MUTATIONS (deterministic) ================
+   Error codes follow the project's error taxonomy so the same codes drive
+   feedback, hints, and research logging.
+============================================================================== */
+const Feedback = (function () {
+  const ERR = {
+    MISSING_SUPPORT: 'Missing support or connection',
+    EXTRA_SUPPORT: 'Unnecessary support',
+    SUPPORT_TYPE: 'Different support type',
+    REACTION_DIRECTION: 'Different reaction direction',
+    MISSING_WEIGHT: 'Missing weight',
+    WEIGHT_LOCATION: 'Different point of application for weight',
+    MISSING_LOAD: 'Missing load',
+    UNNECESSARY_LOAD: 'Unnecessary force',
+    LOAD_DIRECTION: 'Different load direction',
+    IDEALIZATION_2D: 'Different 2D/3D idealization'
+  };
+  const angDiff = (a, b) => { let d = Math.abs(((a - b) % 360 + 360) % 360); return Math.min(d, 360 - d); };
+  const tname = (t, ONT) => (t && ONT[t] ? ONT[t].name.toLowerCase() : 'no idealization');
+  const nU = (t, ONT) => (t && ONT[t] ? ONT[t].unknowns.length : 0);
+
+  // student, ai: models (SI). Only non-rejected items count.
+  function compare(student, ai, ctx) {
+    const ONT = ctx.ONT, lbl = (id, m) => (m.points.find((p) => p.id === id) || {}).label || id;
+    const live = (arr) => arr.filter((x) => !x.excluded && (!x.prov || x.prov.status !== 'rejected'));
+    const sS = live(student.supports), aS = live(ai.supports);
+    const sL = live(student.loads), aL = live(ai.loads);
+    const items = [], agree = [];
+    for (const a of aS) {
+      const p = lbl(a.pointId, ai);
+      const s = sS.find((x) => x.pointId === a.pointId);
+      if (!a.type) {
+        if (!s) items.push({ code: 'MISSING_SUPPORT', at: p, hints: [
+          `Look at point ${p} in the photo. Is the body touching or connected to anything there?`,
+          `Anything outside the system that prevents motion of the body produces reaction forces. What prevents motion at ${p}?`,
+          `The AI model identifies a connection at ${p} but could not classify it from the photo. You need to decide how to idealize it.`] });
+        else agree.push(`Connection at ${p}: the AI could not classify it from the photo, so your choice (${tname(s.type, ONT)}) is your call. Make sure your one-sentence justification supports it.`);
+        continue;
+      }
+      if (!s) {
+        items.push({ code: 'MISSING_SUPPORT', at: p, hints: [
+          `Look at point ${p} in the photo. Is the body touching or connected to anything there?`,
+          `Anything outside the system that prevents motion of the body produces reaction forces. What prevents motion at ${p}?`,
+          `The AI model has a ${tname(a.type, ONT)} at ${p}. Decide whether you agree, and why.`] });
+        continue;
+      }
+      if (s.type !== a.type) {
+        items.push({ code: 'SUPPORT_TYPE', at: p, hints: [
+          `Look at the connection at ${p}.`,
+          `Ask yourself which translations and which rotation the connection at ${p} prevents. Each prevented motion is one reaction component.`,
+          `You chose a ${tname(s.type, ONT)} (${nU(s.type, ONT)} unknown${nU(s.type, ONT) === 1 ? '' : 's'}); the AI proposed a ${tname(a.type, ONT)} (${nU(a.type, ONT)} unknown${nU(a.type, ONT) === 1 ? '' : 's'}). ${a.type && ONT[a.type] ? ONT[a.type].explain : ''} Which matches the physical connection?`] });
+        continue;
+      }
+      if (ONT[a.type] && ONT[a.type].dirLabel && angDiff(s.dirDeg || 0, a.dirDeg || 0) > 5) {
+        items.push({ code: 'REACTION_DIRECTION', at: p, hints: [
+          `Check the direction of the reaction at ${p}.`,
+          `For a surface contact or roller, the reaction is perpendicular to the surface and points into the body. For a cable or link, it acts along the member.`,
+          `Your direction is ${(+s.dirDeg).toFixed(1)}°; the AI used ${(+a.dirDeg).toFixed(1)}° (measured counterclockwise from +x).`] });
+        continue;
+      }
+      agree.push(`Support at ${p}: both chose ${tname(a.type, ONT)}.`);
+    }
+    for (const s of sS) {
+      if (aS.some((a) => a.pointId === s.pointId)) continue;
+      const p = lbl(s.pointId, student);
+      items.push({ code: 'EXTRA_SUPPORT', at: p, hints: [
+        `Look at point ${p}. What, outside the body, physically touches or holds it there?`,
+        `A support belongs in the model only where the isolated body contacts, or is connected to, something outside the system.`,
+        `The AI model has no support at ${p}. Either justify yours from the photo or remove it.`] });
+    }
+    const aW = aL.find((l) => l.kind === 'weight'), sW = sL.filter((l) => l.kind === 'weight');
+    if (aW && !sW.length) {
+      items.push({ code: 'MISSING_WEIGHT', at: lbl(aW.pointId, ai), hints: [
+        'What does gravity do to this object?',
+        'Self-weight acts at the center of gravity. Include it, or add an assumption explaining why it is negligible here.',
+        `The AI model includes the weight ${aW.label} at ${lbl(aW.pointId, ai)}.`] });
+    } else if (aW && sW.length && !sW.some((w) => w.pointId === aW.pointId)) {
+      items.push({ code: 'WEIGHT_LOCATION', at: lbl(sW[0].pointId, student), hints: [
+        'Where does the weight act?',
+        'Weight acts at the center of gravity. For a uniform member that is its midpoint; for an irregular object, estimate where it would balance.',
+        `The AI model places the weight at ${lbl(aW.pointId, ai)}.`] });
+    } else if (aW) agree.push('Weight: both included it at the same point.');
+    const forces = (arr) => arr.filter((l) => l.kind === 'force' || l.kind === 'dist' || l.kind === 'couple');
+    for (const a of forces(aL)) {
+      const p = lbl(a.pointId, ai);
+      const s = forces(sL).find((x) => x.pointId === a.pointId && x.kind === a.kind);
+      if (!s) {
+        items.push({ code: 'MISSING_LOAD', at: p, hints: [
+          `Is anything pushing or pulling on the body near ${p}?`,
+          'List every external load: anything resting on, hanging from, or pushing on the isolated body.',
+          `The AI model has a load ${a.label} at ${p}.`] });
+      } else if (a.kind === 'force' && angDiff(s.dirDeg ?? 270, a.dirDeg ?? 270) > 5) {
+        items.push({ code: 'LOAD_DIRECTION', at: p, hints: [
+          `Check the direction of the load at ${p}.`,
+          'Which way does the load act on the body you isolated? A hanging load pulls down on what it hangs from.',
+          `Your direction is ${(s.dirDeg ?? 270).toFixed(1)}°; the AI used ${(a.dirDeg ?? 270).toFixed(1)}°.`] });
+      } else agree.push(`Load at ${p}: both included it with the same direction.`);
+    }
+    for (const s of forces(sL)) {
+      if (forces(aL).some((a) => a.pointId === s.pointId && a.kind === s.kind)) continue;
+      const p = lbl(s.pointId, student);
+      const atSupport = sS.some((x) => x.pointId === s.pointId);
+      items.push({ code: 'UNNECESSARY_LOAD', at: p, hints: [
+        `What, physically, applies the force ${s.label} at ${p}?`,
+        atSupport ? `There is also a support at ${p}. Support reactions are produced by the support itself; they are not applied loads. Is ${s.label} really a reaction you have already represented?`
+          : 'Each applied load should come from something you can point to in the photo or description.',
+        `The AI model has no applied load at ${p}.`] });
+    }
+    if (ctx.studentDim && ctx.aiDim && ctx.studentDim !== ctx.aiDim) {
+      items.push({ code: 'IDEALIZATION_2D', at: '—', hints: [
+        'Do the loads and supports all lie in one plane?',
+        'A 2D model is appropriate when the geometry, loads, and reactions act in a single plane.',
+        `The AI recommended a ${ctx.aiDim} model.`] });
+    }
+    return { items: items.map((x) => ({ ...x, title: ERR[x.code] })), agree };
+  }
+
+  /* ---- Challenge mode: apply known flaws to a copy of the reference model ---- */
+  const SWAP = { pin: 'roller', roller: 'pin', rocker: 'pin', smooth: 'rough', rough: 'smooth', link: 'pin', fixed: 'pin', cable: 'link', slot: 'pin', collar_pin: 'pin', collar_fixed: 'collar_pin' };
+  function mutate(model, rng = Math.random) {
+    const m = JSON.parse(JSON.stringify(model));
+    const ops = [];
+    const typed = m.supports.filter((s) => s.type && SWAP[s.type]);
+    if (typed.length) ops.push('SUPPORT_TYPE');
+    if (m.loads.some((l) => l.kind === 'weight')) ops.push('DROP_WEIGHT');
+    if (m.loads.some((l) => l.kind === 'force')) ops.push('FLIP_LOAD');
+    if (m.body.cg && m.points.find((p) => p.id === m.body.cg)) ops.push('MOVE_CG');
+    if (m.supports.some((s) => ['smooth', 'roller', 'rough', 'rocker'].includes(s.type))) ops.push('NORMAL_DIR');
+    const chosen = [];
+    while (chosen.length < 2 && ops.length) chosen.push(ops.splice(Math.floor(rng() * ops.length), 1)[0]);
+    const log = [];
+    for (const op of chosen) {
+      if (op === 'SUPPORT_TYPE') {
+        const s = typed[Math.floor(rng() * typed.length)];
+        const from = s.type; s.type = SWAP[from];
+        if (['roller', 'smooth', 'rough'].includes(s.type) && s.dirDeg === undefined) s.dirDeg = 90;
+        if (s.type === 'rough') { s.frictionMode = 'unknown'; s.mu = 0.3; }
+        s.prov = { conf: 'likely', why: 'The connection appears to behave like this idealization.' };
+        log.push({ op, target: s.id, kind: 'support', from, to: s.type });
+      } else if (op === 'DROP_WEIGHT') {
+        const w = m.loads.find((l) => l.kind === 'weight');
+        m.loads = m.loads.filter((l) => l !== w);
+        const a = { id: 'aMut', text: 'Self-weight is negligible compared with the other loads.', prov: { conf: 'likely' } };
+        m.assumptions.push(a);
+        log.push({ op, target: 'aMut', kind: 'assumption', removed: w.label });
+      } else if (op === 'FLIP_LOAD') {
+        const l = m.loads.find((x) => x.kind === 'force');
+        l.dirDeg = ((l.dirDeg ?? 270) + 180) % 360;
+        log.push({ op, target: l.id, kind: 'load' });
+      } else if (op === 'MOVE_CG') {
+        const g = m.points.find((p) => p.id === m.body.cg);
+        const xs = m.points.map((p) => p.x);
+        const span = Math.max(...xs) - Math.min(...xs) || 1;
+        g.x = +(g.x + 0.3 * span).toFixed(4);
+        log.push({ op, target: g.id, kind: 'point' });
+      } else if (op === 'NORMAL_DIR') {
+        const s = m.supports.find((x) => ['smooth', 'roller', 'rough', 'rocker'].includes(x.type) && !log.some((l) => l.target === x.id));
+        if (!s) continue;
+        s.dirDeg = ((s.dirDeg ?? 90) + 90) % 360;
+        log.push({ op, target: s.id, kind: 'support' });
+      }
+    }
+    return { model: m, log };
+  }
+  const MUT_TEXT = {
+    SUPPORT_TYPE: 'A support was given the wrong idealization.',
+    DROP_WEIGHT: 'The weight was removed and justified with a questionable assumption.',
+    FLIP_LOAD: 'An applied load points the wrong way.',
+    MOVE_CG: 'The center of gravity was moved away from a defensible location.',
+    NORMAL_DIR: 'A contact reaction was given a direction that is not perpendicular to the surface.'
+  };
+  const MUT_HINT = {
+    SUPPORT_TYPE: 'Check the supports: does each idealization match what the connection prevents?',
+    DROP_WEIGHT: 'Check the assumptions: is every one of them defensible for this object?',
+    FLIP_LOAD: 'Check the loads: does each one act in a physically sensible direction?',
+    MOVE_CG: 'Check the geometry: where should the weight act?',
+    NORMAL_DIR: 'Check the reaction directions at the contacts.'
+  };
+  return { ERR, compare, mutate, MUT_TEXT, MUT_HINT };
+})();
+if (typeof module !== 'undefined') module.exports = Feedback;
+
+/* ==== DIAGRAM RENDERER ========================================================
+   Draws the idealized model (with support symbols) or the FBD (supports replaced
+   by reaction components) from the structured model. Never from a picture.
+============================================================================== */
+const Render = (function () {
+  const W = 900, H = 600, PAD = 120, ARW = 72;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const DEG = Math.PI / 180;
+
+  function symText(sym, x, y, cls = '', anchor = 'middle') {
+    const b = esc(sym.b), s = sym.s ? esc(sym.s) : '';
+    return `<text x="${x}" y="${y}" class="lbl ${cls}" text-anchor="${anchor}" dominant-baseline="middle"><tspan class="it">${b}</tspan>${s ? `<tspan class="sub" dy="5">${s}</tspan>` : ''}</text>`;
+  }
+  const parseLabel = (L) => { const i = L.indexOf('_'); return i > 0 ? { b: L.slice(0, i), s: L.slice(i + 1) } : { b: L, s: '' }; };
+
+  function frame(model, extra = []) {
+    const xs = model.points.map((p) => p.x).concat(extra.map((p) => p[0]));
+    const ys = model.points.map((p) => p.y).concat(extra.map((p) => p[1]));
+    if (!xs.length) return { tx: (x) => W / 2, ty: (y) => H / 2, k: 100 };
+    const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
+    const w = maxx - minx, h = maxy - miny;
+    let k = Math.min(w > 1e-9 ? (W - 2 * PAD) / w : Infinity, h > 1e-9 ? (H - 2 * PAD) / h : Infinity);
+    if (!isFinite(k)) k = 100;
+    const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
+    return { tx: (x) => W / 2 + (x - cx) * k, ty: (y) => H / 2 - (y - cy) * k, k };
+  }
+
+  function arrow(x1, y1, x2, y2, cls, dashed) {
+    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="arr ${cls}" marker-end="url(#ah-${cls})"${dashed ? ' stroke-dasharray="6 4"' : ''}/>`;
+  }
+
+  // screen direction vector for angle (deg, CCW from +x, y up)
+  const sdir = (deg) => [Math.cos(deg * DEG), -Math.sin(deg * DEG)];
+
+  function hatch(cx, cy, g, len) { // ground line centered at (cx,cy), hatch on side g (screen unit vector)
+    const t = [-g[1], g[0]];
+    let s = `<line x1="${cx - t[0] * len / 2}" y1="${cy - t[1] * len / 2}" x2="${cx + t[0] * len / 2}" y2="${cy + t[1] * len / 2}" class="gnd"/>`;
+    for (let i = -len / 2 + 4; i <= len / 2; i += 8) {
+      const x = cx + t[0] * i, y = cy + t[1] * i;
+      s += `<line x1="${x}" y1="${y}" x2="${x + g[0] * 9 - t[0] * 6}" y2="${y + g[1] * 9 - t[1] * 6}" class="hatch"/>`;
+    }
+    return s;
+  }
+
+  function supportSymbol(s, X, Y, cls, end) {
+    const t = s.type;
+    let g; // unit vector pointing from the point toward the ground side (screen)
+    if (['pin', 'fixed'].includes(t) || !t) g = sdir(s.symbolDeg ?? 270);
+    else if (['cable', 'link'].includes(t)) g = sdir(s.dirDeg || 0);
+    else { const d = sdir(s.dirDeg ?? 90); g = [-d[0], -d[1]]; }
+    const tg = [-g[1], g[0]];
+    const P = (a, b) => [X + g[0] * a + tg[0] * b, Y + g[1] * a + tg[1] * b];
+    const pt = (q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`;
+    let out = `<g class="sup ${cls}">`;
+    if (!t) {
+      out += `<circle cx="${X}" cy="${Y}" r="16" class="unknownsup"/><text x="${X + g[0] * 32}" y="${Y + g[1] * 32}" class="qmark" text-anchor="middle" dominant-baseline="middle">?</text>`;
+    } else if (t === 'pin') {
+      out += `<polygon points="${pt([X, Y])} ${pt(P(26, -15))} ${pt(P(26, 15))}" class="sym"/><circle cx="${X}" cy="${Y}" r="4" class="pinhole"/>` + hatch(...P(26, 0), g, 46);
+    } else if (t === 'roller' || t === 'rocker') {
+      if (t === 'roller') {
+        out += `<polygon points="${pt([X, Y])} ${pt(P(18, -13))} ${pt(P(18, 13))}" class="sym"/>`;
+        out += `<circle cx="${P(24, -7)[0]}" cy="${P(24, -7)[1]}" r="5" class="sym"/><circle cx="${P(24, 7)[0]}" cy="${P(24, 7)[1]}" r="5" class="sym"/>` + hatch(...P(30, 0), g, 46);
+      } else {
+        const a = P(10, -14), b = P(10, 14), c = P(30, 0);
+        out += `<path d="M${pt([X, Y])} L${pt(a)} Q${pt(P(34, 0))} ${pt(b)} Z" class="sym"/>` + hatch(...P(29, 0), g, 46);
+      }
+      out += `<circle cx="${X}" cy="${Y}" r="3.5" class="pinhole"/>`;
+    } else if (t === 'smooth' || t === 'rough') {
+      out += hatch(X, Y, g, 76);
+      if (t === 'rough') for (let i = -30; i <= 30; i += 10) { const q = P(0, i); out += `<path d="M${pt(q)} l${(g[0] * 5 + tg[0] * 5).toFixed(1)},${(g[1] * 5 + tg[1] * 5).toFixed(1)}" class="rough"/>`; }
+    } else if (t === 'slot') {
+      const a1 = P(-9, -28), a2 = P(-9, 28), b1 = P(9, -28), b2 = P(9, 28);
+      out += `<line x1="${a1[0]}" y1="${a1[1]}" x2="${a2[0]}" y2="${a2[1]}" class="gnd"/><line x1="${b1[0]}" y1="${b1[1]}" x2="${b2[0]}" y2="${b2[1]}" class="gnd"/><circle cx="${X}" cy="${Y}" r="7" class="sym"/>`;
+    } else if (t === 'collar_pin' || t === 'collar_fixed') {
+      const r1 = P(0, -46), r2 = P(0, 46);
+      out += `<line x1="${r1[0]}" y1="${r1[1]}" x2="${r2[0]}" y2="${r2[1]}" class="rod"/>`;
+      out += `<polygon points="${pt(P(-9, -15))} ${pt(P(-9, 15))} ${pt(P(9, 15))} ${pt(P(9, -15))}" class="${t === 'collar_fixed' ? 'symfill' : 'sym'}"/>`;
+      if (t === 'collar_pin') out += `<circle cx="${X}" cy="${Y}" r="3.5" class="pinhole"/>`;
+    } else if (t === 'fixed') {
+      out += `<line x1="${P(0, -32)[0]}" y1="${P(0, -32)[1]}" x2="${P(0, 32)[0]}" y2="${P(0, 32)[1]}" class="wall"/>` + hatch(...P(4, 0), g, 64);
+    } else if (t === 'cable') {
+      const e = end || P(92, 0);
+      out += `<line x1="${X}" y1="${Y}" x2="${e[0]}" y2="${e[1]}" class="cable"/>` + hatch(e[0], e[1], g, 34);
+    } else if (t === 'link') {
+      const e = end || P(84, 0);
+      out += `<line x1="${X}" y1="${Y}" x2="${e[0]}" y2="${e[1]}" class="link"/><circle cx="${X}" cy="${Y}" r="4.5" class="pinhole"/><circle cx="${e[0]}" cy="${e[1]}" r="4.5" class="pinhole"/>` + hatch(e[0] + g[0] * 5, e[1] + g[1] * 5, g, 30);
+    }
+    return out + '</g>';
+  }
+
+  function couple(X, Y, M, cls, labelSym, dashed) {
+    const r = 26, ccw = M >= 0;
+    const a0 = ccw ? 200 : -20, a1 = ccw ? -20 + 360 : 200;
+    const p = (a) => [X + r * Math.cos(a * DEG), Y - r * Math.sin(a * DEG)];
+    const s = p(ccw ? 210 : 330), e = p(ccw ? 330 + 0 : 210);
+    // draw 240° arc
+    const start = ccw ? p(-30) : p(210), end = ccw ? p(210) : p(-30);
+    const sweep = ccw ? 0 : 1;
+    return `<path d="M${start[0].toFixed(1)},${start[1].toFixed(1)} A${r},${r} 0 1 ${sweep} ${end[0].toFixed(1)},${end[1].toFixed(1)}" class="arr ${cls}" fill="none" marker-end="url(#ah-${cls})"${dashed ? ' stroke-dasharray="6 4"' : ''}/>` +
+      symText(labelSym, X + 40, Y - 30, cls, 'start');
+  }
+
+  function draw(svg, opts) {
+    const { model, analysis, view, fmt, momentPointId, highlight } = opts;
+    const status = (x) => (x.prov ? x.prov.status : 'added');
+    const live = (x) => status(x) !== 'rejected';
+    const pts = {};
+    model.points.forEach((p) => (pts[p.id] = p));
+    const F = frame(model);
+    const X = (p) => F.tx(p.x), Y = (p) => F.ty(p.y);
+    let s = `<defs>${['load', 'unk', 'ai', 'res'].map((c) => `<marker id="ah-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-${c}"/></marker>`).join('')}
+      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0 L0 0 0 20" class="gridline"/></pattern>
+      <pattern id="grid5" width="100" height="100" patternUnits="userSpaceOnUse"><rect width="100" height="100" fill="url(#grid)"/><path d="M100 0 L0 0 0 100" class="gridline5"/></pattern></defs>
+      <rect x="-1200" y="-1200" width="${W + 2400}" height="${H + 2400}" fill="url(#grid5)"/>`;
+
+    // body
+    const outline = (model.body.outline || []).map((id) => pts[id]).filter(Boolean);
+    if (outline.length >= 2) {
+      const d = outline.map((p, i) => `${i ? 'L' : 'M'}${X(p).toFixed(1)},${Y(p).toFixed(1)}`).join(' ') + (model.body.closed ? ' Z' : '');
+      s += `<path d="${d}" class="body${model.body.closed ? ' closed' : ''}"/>`;
+    }
+
+    // supports (model view) / reactions (FBD view)
+    const sups = model.supports.filter(live);
+    if (view === 'model') {
+      for (const sp of sups) { const p = pts[sp.pointId]; const q = sp.towardId && pts[sp.towardId]; if (p) s += supportSymbol(sp, X(p), Y(p), status(sp) === 'proposed' ? 'proposed' : '', ['cable', 'link'].includes(sp.type) && q ? [X(q), Y(q)] : null); }
+    } else if (analysis) {
+      const bySup = {};
+      analysis.unknowns.forEach((u) => { (bySup[u.supportId] = bySup[u.supportId] || []).push(u); });
+      for (const sp of sups) {
+        const p = pts[sp.pointId]; if (!p) continue;
+        const us = bySup[sp.id] || [];
+        const dashed = status(sp) === 'proposed';
+        const cls = dashed ? 'ai' : 'unk';
+        const x0 = X(p), y0 = Y(p);
+        if (!sp.type) { s += `<circle cx="${x0}" cy="${y0}" r="16" class="unknownsup"/><text x="${x0}" y="${y0 + 34}" class="qmark" text-anchor="middle">?</text>`; continue; }
+        for (const u of us) {
+          if (u.kind === 'M') { s += couple(x0, y0, 1, cls, u.sym, dashed); continue; }
+          const d = sdir(Math.atan2(u.e[1], u.e[0]) / DEG);
+          const push = u.role === 'normal' && u.sense === 'compression';
+          let x1, y1, x2, y2;
+          if (push) { x2 = x0 - d[0] * 6; y2 = y0 - d[1] * 6; x1 = x2 - d[0] * ARW; y1 = y2 - d[1] * ARW; }
+          else { x1 = x0 + d[0] * 6; y1 = y0 + d[1] * 6; x2 = x1 + d[0] * ARW; y2 = y1 + d[1] * ARW; }
+          s += arrow(x1, y1, x2, y2, cls, dashed);
+          const lx = (push ? x1 : x2) + d[0] * 14 * (push ? -1 : 1) + (Math.abs(d[1]) > 0.7 ? 14 : 0);
+          const ly = (push ? y1 : y2) + d[1] * 14 * (push ? -1 : 1) + (Math.abs(d[0]) > 0.7 ? -12 : 0);
+          s += symText(u.sym, lx, ly, cls);
+          const ang = Math.atan2(u.e[1], u.e[0]) / DEG;
+          const aligned = [0, 90, 180, -90, -180].some((a) => Math.abs(ang - a) < 0.01);
+          if (!aligned) s += `<text x="${lx}" y="${ly + 18}" class="anglbl" text-anchor="middle">${((ang + 360) % 360).toFixed(1)}°</text>`;
+        }
+      }
+    }
+
+    // loads
+    for (const L of model.loads.filter(live)) {
+      const dashed = status(L) === 'proposed';
+      const cls = dashed ? 'ai' : 'load';
+      const p = pts[L.pointId]; if (!p) continue;
+      const x0 = X(p), y0 = Y(p);
+      if (L.kind === 'couple') { s += couple(x0, y0, L.mag, cls, parseLabel(L.label), dashed); continue; }
+      if (L.kind === 'dist') {
+        const q = pts[L.p2Id]; if (!q) continue;
+        const x1 = X(q), y1 = Y(q);
+        const d = sdir(L.dirDeg ?? 270);
+        const wmax = Math.max(Math.abs(L.w1), Math.abs(L.w2)) || 1;
+        const n = 8;
+        let env = '';
+        for (let i = 0; i <= n; i++) {
+          const t = i / n, bx = x0 + (x1 - x0) * t, by = y0 + (y1 - y0) * t;
+          const w = (L.w1 + (L.w2 - L.w1) * t) / wmax, len = 12 + 46 * w;
+          const tx = bx - d[0] * len, ty = by - d[1] * len;
+          if (w > 0.01) s += arrow(tx, ty, bx - d[0] * 3, by - d[1] * 3, cls, dashed);
+          env += `${i ? 'L' : 'M'}${tx.toFixed(1)},${ty.toFixed(1)} `;
+        }
+        s += `<path d="${env}" class="env ${cls}"/>`;
+        const mid = [(x0 + x1) / 2 - d[0] * 76, (y0 + y1) / 2 - d[1] * 76];
+        s += symText(parseLabel(L.label), mid[0], mid[1] - 8, cls);
+        if (view === 'fbd' && analysis) {
+          const R = analysis.loads.find((r) => r.id === L.id);
+          if (R) {
+            const rx = F.tx(R.P[0]), ry = F.ty(R.P[1]);
+            s += arrow(rx - d[0] * (ARW + 40), ry - d[1] * (ARW + 40) + 0, rx - d[0] * 64, ry - d[1] * 64, 'res', true);
+            s += `<text x="${rx + 8}" y="${ry - d[1] * (ARW + 50)}" class="lbl res">${esc(R.label.replace('_', ' '))} = ${fmt ? fmt(R.mag, 'F') : R.mag.toFixed(1)}</text>`;
+          }
+        }
+        continue;
+      }
+      const dir = L.kind === 'weight' ? 270 : (L.dirDeg ?? 270);
+      const d = sdir(dir);
+      let x1, y1, x2, y2;
+      if (L.kind === 'weight') { x1 = x0; y1 = y0; x2 = x0 + d[0] * ARW; y2 = y0 + d[1] * ARW; }
+      else { x2 = x0 - d[0] * 5; y2 = y0 - d[1] * 5; x1 = x2 - d[0] * ARW; y1 = y2 - d[1] * ARW; }
+      s += arrow(x1, y1, x2, y2, cls, dashed);
+      const tip = L.kind === 'weight' ? [x2, y2] : [x1, y1];
+      const out = L.kind === 'weight' ? 1 : -1;
+      const lx = tip[0] + d[0] * 16 * out + (Math.abs(d[1]) > 0.7 ? 16 : 0), ly = tip[1] + d[1] * 16 * out;
+      s += symText(parseLabel(L.label), lx, ly, cls, Math.abs(d[1]) > 0.7 ? 'start' : 'middle');
+      if (fmt && isFinite(L.mag)) s += `<text x="${lx + (Math.abs(d[1]) > 0.7 ? 0 : 0)}" y="${ly + 18}" class="vallbl" text-anchor="${Math.abs(d[1]) > 0.7 ? 'start' : 'middle'}">${fmt(L.mag, 'F')}</text>`;
+    }
+
+    // points
+    for (const p of model.points) {
+      const hl = highlight === p.id;
+      s += `<circle cx="${X(p)}" cy="${Y(p)}" r="${hl ? 7 : 3.5}" class="pt${hl ? ' hl' : ''}"/>`;
+      s += `<text x="${X(p) - 10}" y="${Y(p) - 12}" class="ptlbl" text-anchor="end">${esc(p.label)}</text>`;
+      if (model.body.cg === p.id) s += `<circle cx="${X(p)}" cy="${Y(p)}" r="9" class="cgmark"/><path d="M${X(p)},${Y(p) - 9} A9,9 0 0 1 ${X(p) + 9},${Y(p)} L${X(p)},${Y(p)} Z M${X(p)},${Y(p) + 9} A9,9 0 0 1 ${X(p) - 9},${Y(p)} L${X(p)},${Y(p)} Z" class="cgfill"/>`;
+    }
+
+    // moment point marker
+    if (view === 'fbd' && momentPointId && pts[momentPointId]) {
+      const p = pts[momentPointId];
+      s += `<circle cx="${X(p)}" cy="${Y(p)}" r="15" class="mpt"/><text x="${X(p) + 18}" y="${Y(p) + 26}" class="mptlbl">moment point</text>`;
+    }
+
+    // axes triad + scale bar
+    s += `<g class="triad" transform="translate(40,${H - 40})"><line x1="0" y1="0" x2="48" y2="0" class="arr axis" marker-end="url(#ah-load)"/><line x1="0" y1="0" x2="0" y2="-48" class="arr axis" marker-end="url(#ah-load)"/>
+      <text x="56" y="4" class="lbl it">x</text><text x="-4" y="-56" class="lbl it">y</text><path d="M14,-8 A10,10 0 1 0 8,-16" class="axis" fill="none" marker-end="url(#ah-load)"/><text x="22" y="-22" class="small">+M</text></g>`;
+    if (fmt && F.k && isFinite(F.k)) {
+      const target = 120 / F.k; // model length for ~120px
+      const pow = Math.pow(10, Math.floor(Math.log10(target)));
+      const nice = [1, 2, 5, 10].map((m) => m * pow).reduce((a, b) => (Math.abs(b - target) < Math.abs(a - target) ? b : a));
+      const px = nice * F.k;
+      s += `<g transform="translate(${W - 40 - px},${H - 36})"><line x1="0" y1="0" x2="${px}" y2="0" class="scale"/><line x1="0" y1="-5" x2="0" y2="5" class="scale"/><line x1="${px}" y1="-5" x2="${px}" y2="5" class="scale"/><text x="${px / 2}" y="-9" class="small" text-anchor="middle">${fmt(nice, 'L')}</text></g>`;
+    }
+    if (view === 'fbd') s += `<text x="${W / 2}" y="${H - 12}" class="small" text-anchor="middle">Arrows not to scale. Reactions drawn in their assumed positive sense.</text>`;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = s;
+  }
+  return { draw, parseLabel };
+})();
+
+/* ==== APPLICATION ==============================================================
+   Three layers: AI proposal (immutable snapshot) → student model (editable,
+   every item carries provenance) → engineering consequence (recomputed by the
+   engine on every render; never stored as truth).
+============================================================================== */
+(function () {
+  'use strict';
+  const S = Statics, ONT = S.ONT2D;
+  const $ = (q) => document.querySelector(q);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  let uidN = 0;
+  const uid = (p) => p + Date.now().toString(36) + (uidN++).toString(36);
+
+  const UNITS = {
+    SI: { len: { mm: 0.001, cm: 0.01, m: 1 }, force: { N: 1, kN: 1000 } },
+    USCS: { len: { in: 0.0254, ft: 0.3048 }, force: { lb: 4.4482216152605, kip: 4448.2216152605 } }
+  };
+  const MODES = [
+    { id: 'guided', name: 'Guided', tip: 'Explanations at every step' },
+    { id: 'practice', name: 'Practice', tip: 'Build your model first; AI feedback after you submit' },
+    { id: 'challenge', name: 'Challenge', tip: 'Find the questionable assumptions in an AI proposal' },
+    { id: 'exploration', name: 'Exploration', tip: 'Includes 3D extension material' }
+  ];
+  const STEPS = [
+    { id: 'capture', group: 'Photo', name: 'Object' },
+    { id: 'interpret', group: 'Photo', name: 'Interpretation' },
+    { id: 'geometry', group: 'Model', name: 'Geometry' },
+    { id: 'assumptions', group: 'Model', name: 'Assumptions' },
+    { id: 'loads', group: 'Model', name: 'Loads' },
+    { id: 'supports', group: 'Model', name: 'Supports' },
+    { id: 'fbd', group: 'FBD', name: 'Free-body diagram' },
+    { id: 'equations', group: 'Equations', name: 'Equilibrium' },
+    { id: 'solution', group: 'Solution', name: 'Solution' }
+  ];
+  const GUIDE = {
+    capture: 'What is the object, and how is it held up? Describe anything the photo cannot show: how it is attached, what touches it, what loads it carries.',
+    interpret: 'What is the system? Which parts move together as one rigid body, and what lies outside the system?',
+    geometry: 'Which points matter for statics? You need every support, every load location, and the center of gravity — nothing else.',
+    assumptions: 'What are you assuming in order to make this solvable? Every model rests on assumptions; the goal is to state them, not avoid them.',
+    loads: 'What acts on the body from outside? Weight, things resting on it, things hanging from it, things pushing on it.',
+    supports: 'At each contact or connection: which translations, and which rotation, does it prevent? Each prevented motion is one reaction component.',
+    fbd: 'Compare this diagram with the photo. Is every external force shown exactly once? Is anything shown that is not external?',
+    equations: 'How many unknowns do you have, and how many independent equations? Choose the moment point that eliminates the most unknowns.',
+    solution: 'Do the results make physical sense? A negative value means the force acts opposite to the direction you assumed.'
+  };
+  const CONF = { likely: 'Likely', possible: 'Possible', cannot: 'Cannot determine from photo' };
+
+  const blankModel = () => ({ points: [], body: { outline: [], closed: false, cg: null }, supports: [], loads: [], assumptions: [] });
+  const state = {
+    mode: 'guided', units: { system: 'SI', len: 'm', force: 'N' },
+    object: { name: '', desc: '', clar: [] }, images: [], active: 0,
+    sampleKey: null, interpreted: false, liveNotice: false, ai: null, aiHidden: false,
+    model: blankModel(), dimChoice: null, studentScope: null, step: 0, tab: 'model', momentPointId: null,
+    anchoring: null, highlight: null, chooseOther: {}, dontKnow: {},
+    practice: { result: null, hints: {}, revealed: false, submissions: 0 }, challenge: null,
+    reflections: {}, events: []
+  };
+
+  /* ---------- units & number formatting ---------- */
+  function uf(k) {
+    const u = UNITS[state.units.system], L = u.len[state.units.len], F = u.force[state.units.force];
+    return k === 'L' ? L : k === 'F' ? F : k === 'M' ? F * L : k === 'w' ? F / L : 1;
+  }
+  function ustr(k) {
+    const { len, force } = state.units;
+    return k === 'L' ? len : k === 'F' ? force : k === 'M' ? `${force}·${len}` : k === 'w' ? `${force}/${len}` : '';
+  }
+  const toD = (v, k) => v / uf(k), fromD = (v, k) => v * uf(k);
+  function num(x) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    if (Math.abs(x) < 1e-10) return '0';
+    const a = Math.abs(x);
+    const s = a >= 1e6 || a < 1e-3 ? x.toExponential(3) : String(parseFloat(x.toPrecision(4)));
+    return s.replace('-', '−');
+  }
+  const fmt = (v, k) => `${num(toD(v, k))} ${ustr(k)}`;
+  const inval = (v, k) => (v === null || v === undefined || v === '' || !isFinite(v) ? '' : String(parseFloat(toD(v, k).toPrecision(6))));
+
+  /* ---------- helpers ---------- */
+  const st = (x) => (x.prov ? x.prov.status : 'added');
+  const pt = (id) => state.model.points.find((p) => p.id === id);
+  const lab = (id) => (pt(id) || {}).label || '?';
+  const symHTML = (sym) => `<span class="m"><i>${esc(sym.b)}</i>${sym.s ? `<sub>${esc(sym.s)}</sub>` : ''}</span>`;
+  const lblHTML = (L) => symHTML(Render.parseLabel(L || '?'));
+  function log(action, target, detail) {
+    state.events.push({ t: new Date().toISOString(), mode: state.mode, step: STEPS[state.step].id, action, target: target ?? null, detail: detail ?? null });
+  }
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3600);
+  }
+  const nextLabel = () => {
+    const used = new Set(state.model.points.map((p) => p.label));
+    for (const c of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') if (!used.has(c)) return c;
+    return 'P' + state.model.points.length;
+  };
+
+  function prepSupport(s, pts) {
+    const o = { ...s, excluded: st(s) === 'rejected' };
+    if ((s.type === 'cable' || s.type === 'link') && s.towardId) {
+      const a = pts[s.pointId], b = pts[s.towardId];
+      if (a && b && a !== b) o.dirDeg = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+    }
+    return o;
+  }
+  function prepModel(m) {
+    const pts = {};
+    m.points.forEach((p) => (pts[p.id] = p));
+    return {
+      points: m.points.map((p) => ({ id: p.id, label: p.label, x: +p.x, y: +p.y })),
+      body: m.body,
+      supports: m.supports.map((s) => prepSupport(s, pts)),
+      loads: m.loads.map((l) => ({ ...l, excluded: st(l) === 'rejected' })),
+      assumptions: m.assumptions
+    };
+  }
+  function runAnalysis() {
+    const pm = prepModel(state.model);
+    const an = S.analyze(pm, { momentPointId: state.momentPointId });
+    return { pm, an };
+  }
+  const pending = () => [...state.model.supports, ...state.model.loads, ...state.model.assumptions].filter((x) => st(x) === 'proposed');
+  function blockers() {
+    const b = [];
+    if (!state.model.points.length) { b.push('Build a model first: start on the Object step.'); return b; }
+    if (state.dimChoice !== '2D') b.push(state.dimChoice ? 'Equations and solutions in this version are 2D only. Choose “2D statics model” on the Interpretation step to continue.' : 'Choose a 2D or 3D representation on the Interpretation step.');
+    const p = pending();
+    if (p.length) b.push(`${p.length} AI suggestion${p.length > 1 ? 's' : ''} still need${p.length > 1 ? '' : 's'} your decision: accept, edit, or reject each one.`);
+    state.model.supports.filter((s) => !s.type && st(s) !== 'rejected').forEach((s) => b.push(`Choose an idealization for the connection at ${lab(s.pointId)}.`));
+    if (!state.model.supports.some((s) => st(s) !== 'rejected')) b.push('Add at least one support or connection.');
+    return b;
+  }
+  function modelWarnings(an) {
+    const w = [...an.warnings];
+    const liveLoads = state.model.loads.filter((l) => st(l) !== 'rejected');
+    if (!liveLoads.length) w.push('No loads are applied, so every reaction will be zero. Is that the situation you mean to model?');
+    else if (!liveLoads.some((l) => l.kind === 'weight')) {
+      const said = state.model.assumptions.some((a) => st(a) !== 'rejected' && /weight/i.test(a.text) && /neglig|ignor|neglect/i.test(a.text));
+      if (!said) w.push('The model has no weight. If self-weight is negligible here, add an assumption that says so and why.');
+    }
+    if (an.hadamard !== null && an.hadamard < 0.05) w.push('The supports are nearly improperly constrained (reaction lines almost parallel or almost concurrent). The solution may be very sensitive to small changes in geometry.');
+    return w;
+  }
+
+  /* ---------- examples & interpretation ---------- */
+  function resetObject() {
+    Object.assign(state, {
+      object: { name: '', desc: '', clar: [] }, images: [], active: 0, sampleKey: null, interpreted: false, liveNotice: false,
+      ai: null, aiHidden: false, model: blankModel(), dimChoice: null, studentScope: null, step: 0, tab: 'model', momentPointId: null,
+      anchoring: null, highlight: null, chooseOther: {}, dontKnow: {}, practice: { result: null, hints: {}, revealed: false, submissions: 0 },
+      challenge: null, reflections: {}
+    });
+  }
+  function loadSample(key) {
+    const smp = SAMPLES[key];
+    resetObject();
+    state.sampleKey = key;
+    state.images = [{ id: 'img0', src: smp.art, name: smp.title, illus: true }];
+    state.object = { name: smp.objectName, desc: smp.description, clar: [] };
+    state.units = clone(smp.units);
+    log('load_example', key);
+    render();
+  }
+  function initProv(x) {
+    const p = x.prov || {};
+    x.prov = { source: 'ai', conf: p.conf || 'likely', why: p.why || '', status: 'proposed' };
+  }
+  function requestInterpretation() {
+    if (!state.images.length) { toast('Add a photo first, or open a worked example.'); return; }
+    if (!state.sampleKey) { state.liveNotice = true; log('ai_request_unavailable'); render(); return; }
+    const smp = SAMPLES[state.sampleKey];
+    const base = clone(smp.ai.model);
+    [...base.supports, ...base.loads, ...base.assumptions].forEach(initProv);
+    base.points.forEach((p) => { if (p.anchor) p.anchor.img = 'img0'; });
+    state.ai = { scope: smp.ai.scope, dim: smp.ai.dim, components: smp.ai.components, questions: smp.ai.questions, reference: clone(base), shown: null };
+    state.challenge = null;
+    state.practice = { result: null, hints: {}, revealed: false, submissions: 0 };
+    if (state.mode === 'practice') {
+      state.model = { points: base.points.map((p) => ({ ...p, src: 'given' })), body: clone(base.body), supports: [], loads: [], assumptions: [] };
+      state.aiHidden = true;
+    } else if (state.mode === 'challenge') {
+      const mut = Feedback.mutate(base);
+      [...mut.model.supports, ...mut.model.loads, ...mut.model.assumptions].forEach((x) => { if (!x.prov || x.prov.source !== 'ai') initProv(x); });
+      state.challenge = {
+        log: mut.log.map((e) => {
+          const r = { ...e };
+          if (e.kind === 'support') { const s = mut.model.supports.find((x) => x.id === e.target); r.type = s.type; r.dir = s.dirDeg; }
+          if (e.kind === 'load') r.dir = mut.model.loads.find((x) => x.id === e.target).dirDeg;
+          if (e.kind === 'point') r.x = mut.model.points.find((x) => x.id === e.target).x;
+          return r;
+        }), checked: false, revealed: false
+      };
+      state.model = mut.model;
+      state.aiHidden = false;
+    } else {
+      state.model = base;
+      state.aiHidden = false;
+    }
+    state.ai.shown = clone(state.model);
+    state.interpreted = true;
+    log('ai_proposal_shown', state.sampleKey, { mode: state.mode, mutations: state.challenge ? state.challenge.log.map((l) => l.op) : null });
+    state.step = 1;
+    render();
+  }
+  function startManual() {
+    state.model = blankModel();
+    state.model.points.push({ id: uid('p'), label: 'A', x: 0, y: 0, src: 'student', anchor: null });
+    state.model.assumptions.push({ id: uid('a'), text: 'The object is a rigid body in static equilibrium.', prov: { source: 'student', status: 'added' } });
+    state.ai = null; state.interpreted = true; state.liveNotice = false; state.aiHidden = false;
+    log('manual_model_started');
+    state.step = 1;
+    render();
+  }
+
+  /* ---------- photos ---------- */
+  function downscale(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const max = 1600, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+        const c = document.createElement('canvas');
+        c.width = Math.round(w * k); c.height = Math.round(h * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        res(c.toDataURL('image/jpeg', 0.85)); // re-encoding drops EXIF, including GPS location
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('decode')); };
+      img.src = url;
+    });
+  }
+  async function addFiles(files) {
+    if (!files.length) return;
+    if (state.sampleKey) {
+      if (!confirm('Start a new object with this photo? The current worked example will be cleared.')) return;
+      resetObject();
+    }
+    for (const f of files) {
+      try {
+        const src = await downscale(f);
+        state.images.push({ id: uid('img'), src, name: f.name });
+        log('photo_added', null, { name: f.name });
+      } catch (e) {
+        const heic = /hei[cf]/i.test(f.name + ' ' + f.type);
+        toast(heic ? `This browser cannot open ${f.name} (HEIC). Save the photo as JPEG and upload it again.` : `Could not open ${f.name}. Use a JPG or PNG image.`);
+      }
+    }
+    state.active = Math.max(0, state.images.length - 1);
+    render();
+  }
+
+  /* ---------- field edits ---------- */
+  function touch(item, action) {
+    if (item.prov && item.prov.source === 'ai' && ['proposed', 'accepted'].includes(item.prov.status)) item.prov.status = 'edited';
+    log(action || 'edit', item.id);
+  }
+  function applyField(kind, id, field, v) {
+    const m = state.model;
+    if (kind === 'obj') { state.object[field] = v; log('object_' + field); return; }
+    if (kind === 'units') {
+      if (field === 'system') { state.units = v === 'SI' ? { system: 'SI', len: 'm', force: 'N' } : { system: 'USCS', len: 'ft', force: 'lb' }; }
+      else state.units[field] = v;
+      log('units', null, clone(state.units)); return;
+    }
+    if (kind === 'dim') { state.dimChoice = v; log('dimensionality_chosen', null, { choice: v, aiRec: state.ai ? state.ai.dim.rec : null }); return; }
+    if (kind === 'scope') { state.studentScope = v; log('student_scope', null, v); return; }
+    if (kind === 'mp') { state.momentPointId = v || null; log('moment_point', v); return; }
+    if (kind === 'refl') { state.reflections[field] = v; log('reflection', field); return; }
+    if (kind === 'pt') {
+      const p = m.points.find((x) => x.id === id); if (!p) return;
+      if (field === 'label') {
+        const t = String(v).trim();
+        if (!t) { toast('A point needs a label.'); return; }
+        if (m.points.some((x) => x !== p && x.label === t)) { toast(`Another point is already labeled ${t}.`); return; }
+        p.label = t;
+      } else if (field === 'x' || field === 'y') {
+        if (v === null) { toast('Coordinates cannot be blank.'); return; }
+        p[field] = v; if (p.src !== 'assumed') p.src = 'student';
+      } else p[field] = v;
+      log('point_' + field, id, v); return;
+    }
+    if (kind === 'body') {
+      if (field === 'outline') {
+        const labels = String(v).split(/[\s,;]+/).filter(Boolean);
+        const ids = [];
+        for (const L of labels) { const p = m.points.find((x) => x.label === L); if (!p) { toast(`No point labeled ${L}.`); return; } ids.push(p.id); }
+        m.body.outline = ids;
+      } else m.body[field] = field === 'cg' ? (v || null) : v;
+      log('body_' + field, null, v); return;
+    }
+    if (kind === 'sup') {
+      const s = m.supports.find((x) => x.id === id); if (!s) return;
+      if (field === 'rationale') { s.rationale = v; log('rationale', id); return; }
+      if (field === 'type') {
+        s.type = v || null;
+        if (ONT[v] && ONT[v].dirLabel && (s.dirDeg === undefined || s.dirDeg === null)) s.dirDeg = 90;
+        if (v === 'rough') { s.frictionMode = s.frictionMode || 'unknown'; if (s.mu === undefined) s.mu = null; }
+        if (['pin', 'fixed'].includes(v) && s.symbolDeg === undefined) s.symbolDeg = 270;
+        delete state.dontKnow[id];
+      } else if (field === 'towardId') s.towardId = v || null;
+      else if (field === 'dirDeg') { if (v === null) { toast('Enter a direction angle.'); return; } s.dirDeg = v; s.towardId = null; }
+      else if (field === 'symbolDeg') s.symbolDeg = +v;
+      else s[field] = v;
+      touch(s, 'support_' + field); return;
+    }
+    if (kind === 'load') {
+      const l = m.loads.find((x) => x.id === id); if (!l) return;
+      if (field === 'kind') {
+        l.kind = v;
+        if (v === 'dist') { if (!l.p2Id) l.p2Id = (m.points.find((p) => p.id !== l.pointId) || {}).id; if (l.w1 === undefined) { l.w1 = 0; l.w2 = 0; } if (l.dirDeg === undefined) l.dirDeg = 270; }
+        if (v === 'force' && l.dirDeg === undefined) l.dirDeg = 270;
+      } else if (['mag', 'w1', 'w2', 'dirDeg'].includes(field) && v === null) { toast('Enter a number.'); return; }
+      else l[field] = v;
+      if (['mag', 'w1', 'w2'].includes(field) && l.src === 'estimated') l.src = 'student';
+      touch(l, 'load_' + field); return;
+    }
+    if (kind === 'asm') {
+      const a = m.assumptions.find((x) => x.id === id); if (!a) return;
+      a.text = v; touch(a, 'assumption_text'); return;
+    }
+  }
+  function findItem(kind, id) {
+    const arr = kind === 'sup' ? state.model.supports : kind === 'load' ? state.model.loads : state.model.assumptions;
+    return { arr, item: arr.find((x) => x.id === id) };
+  }
+
+  /* ---------- actions ---------- */
+  function act(a, el) {
+    const [cmd, x, y] = a.split(':');
+    const m = state.model;
+    switch (cmd) {
+      case 'mode': {
+        if (x === state.mode) return;
+        if (state.interpreted && state.sampleKey && !confirm('Switching mode restarts this worked example. Your current model will be cleared.')) return;
+        state.mode = x; log('mode', x);
+        if (state.sampleKey && state.interpreted) { const k = state.sampleKey; loadSample(k); return; }
+        break;
+      }
+      case 'sample': if (state.interpreted && !confirm('Open this worked example? Your current model will be cleared.')) return; loadSample(x); return;
+      case 'newobj': if (state.interpreted && !confirm('Start a new object? Your current model will be cleared (export it first if you want to keep it).')) return; resetObject(); log('new_object'); break;
+      case 'interpret': requestInterpretation(); return;
+      case 'manual': startManual(); return;
+      case 'img': state.active = +x; break;
+      case 'step': gotoStep(+x); return;
+      case 'prev': gotoStep(state.step - 1); return;
+      case 'next': gotoStep(state.step + 1); return;
+      case 'tab': state.tab = x; break;
+      case 'accept': {
+        const { item } = findItem(x, y);
+        if (x === 'sup' && !item.type) { toast('Choose an idealization for this connection before accepting it.'); return; }
+        item.prov.status = 'accepted'; log('accept', y); break;
+      }
+      case 'reject': { const { item } = findItem(x, y); item.prov.status = 'rejected'; log('reject', y); break; }
+      case 'restore': { const { item } = findItem(x, y); item.prov.status = item.prov.source === 'ai' ? 'proposed' : 'added'; log('restore', y); break; }
+      case 'del': { const { arr, item } = findItem(x, y); arr.splice(arr.indexOf(item), 1); log('delete', y); break; }
+      case 'addpt': {
+        const p = { id: uid('p'), label: nextLabel(), x: 0, y: 0, src: 'student', anchor: null };
+        m.points.push(p); log('add_point', p.id); break;
+      }
+      case 'delpt': {
+        const used = m.supports.some((s) => s.pointId === x || s.towardId === x) || m.loads.some((l) => l.pointId === x || l.p2Id === x) || m.body.outline.includes(x) || m.body.cg === x;
+        if (used) { toast('This point is used by the body, a support, or a load. Remove those references first.'); return; }
+        m.points = m.points.filter((p) => p.id !== x); log('delete_point', x); break;
+      }
+      case 'anchor': state.anchoring = state.anchoring === x ? null : x; state.highlight = x; break;
+      case 'hl': state.highlight = state.highlight === x ? null : x; break;
+      case 'addsup': {
+        if (!m.points.length) { toast('Add a point first.'); return; }
+        const s = { id: uid('s'), pointId: m.points[0].id, type: null, prov: { source: 'student', status: 'added' } };
+        m.supports.push(s); log('add_support', s.id); break;
+      }
+      case 'addload': {
+        if (!m.points.length) { toast('Add a point first.'); return; }
+        const used = new Set(m.loads.map((l) => l.label));
+        let i = 1; while (used.has('P' + i)) i++;
+        const l = { id: uid('l'), label: 'P' + i, kind: 'force', pointId: (m.points.find((p) => p.id === m.body.cg) || m.points[0]).id, mag: 0, dirDeg: 270, src: 'student', prov: { source: 'student', status: 'added' } };
+        m.loads.push(l); log('add_load', l.id); break;
+      }
+      case 'addasm': {
+        const inp = $('#newasm'); const t = inp && inp.value.trim();
+        if (!t) { toast('Type the assumption first.'); return; }
+        const a = { id: uid('a'), text: t, prov: { source: 'student', status: 'added' } };
+        m.assumptions.push(a); log('add_assumption', a.id); break;
+      }
+      case 'addclar': {
+        const inp = $('#newclar'); const t = inp && inp.value.trim();
+        if (!t) return;
+        state.object.clar.push(t); log('clarification', null, t); break;
+      }
+      case 'clarex': state.object.clar.push(el.dataset.text); log('clarification', null, el.dataset.text); break;
+      case 'delclar': state.object.clar.splice(+x, 1); break;
+      case 'choose': {
+        const s = m.supports.find((q) => q.id === x);
+        if (y === 'other') { state.chooseOther[x] = true; break; }
+        if (y === 'dontknow') { state.dontKnow[x] = true; log('ambiguity_dont_know', x); break; }
+        applyField('sup', x, 'type', y); log('ambiguity_resolved', x, y);
+        if (s.prov && s.prov.source === 'ai') s.prov.status = 'edited';
+        break;
+      }
+      case 'submitpractice': {
+        const cmp = Feedback.compare(prepModel(m), prepModel(state.ai.reference), { ONT, studentDim: state.dimChoice, aiDim: state.ai.dim.rec });
+        state.practice.result = cmp; state.practice.submissions++;
+        log('practice_submit', null, { n: state.practice.submissions, codes: cmp.items.map((i) => i.code) });
+        break;
+      }
+      case 'hint': {
+        const k = x; state.practice.hints[k] = Math.min(3, (state.practice.hints[k] || 0) + 1);
+        log('hint', k, state.practice.hints[k]); break;
+      }
+      case 'revealai': state.practice.revealed = true; state.tab = 'ai'; state.aiHidden = false; log('practice_reveal_ai'); break;
+      case 'checkchallenge': state.challenge.checked = true; log('challenge_check', null, challengeResults().map((r) => r.found)); break;
+      case 'revealchallenge': state.challenge.revealed = true; log('challenge_reveal'); break;
+      case 'export': exportJSON(); return;
+      case 'about': $('#about').showModal(); return;
+      case 'closeabout': $('#about').close(); return;
+      default: return;
+    }
+    render();
+  }
+  function gotoStep(i) {
+    if (i < 0 || i >= STEPS.length) return;
+    if (i > 0 && !state.interpreted) { toast(state.images.length ? 'Request the AI interpretation, or build the model yourself, to continue.' : 'Start with a photo or a worked example.'); return; }
+    state.step = i;
+    const id = STEPS[i].id;
+    if (['fbd', 'equations', 'solution'].includes(id)) state.tab = 'fbd';
+    else if (['geometry', 'assumptions', 'loads', 'supports', 'interpret'].includes(id) && state.tab !== 'ai') state.tab = 'model';
+    state.anchoring = null;
+    log('goto_step', id);
+    render();
+    $('#right').scrollTop = 0;
+  }
+
+  /* ---------- challenge evaluation ---------- */
+  function challengeResults() {
+    const m = state.model;
+    const angDiff = (a, b) => { const d = Math.abs((((a - b) % 360) + 360) % 360); return Math.min(d, 360 - d); };
+    return state.challenge.log.map((e) => {
+      let found = false;
+      if (e.op === 'SUPPORT_TYPE') { const s = m.supports.find((x) => x.id === e.target); found = !s || st(s) === 'rejected' || s.type !== e.type; }
+      if (e.op === 'NORMAL_DIR') { const s = m.supports.find((x) => x.id === e.target); found = !s || st(s) === 'rejected' || s.type !== e.type || s.towardId || angDiff(s.dirDeg, e.dir) > 1; }
+      if (e.op === 'FLIP_LOAD') { const l = m.loads.find((x) => x.id === e.target); found = !l || st(l) === 'rejected' || angDiff(l.dirDeg ?? 270, e.dir) > 1; }
+      if (e.op === 'MOVE_CG') { const p = m.points.find((x) => x.id === e.target); const w = m.loads.find((l) => l.kind === 'weight' && st(l) !== 'rejected'); found = !p || Math.abs(p.x - e.x) > 1e-6 || !w || w.pointId !== e.target; }
+      if (e.op === 'DROP_WEIGHT') { const a = m.assumptions.find((x) => x.id === 'aMut'); found = !a || ['rejected', 'edited'].includes(st(a)) || m.loads.some((l) => l.kind === 'weight' && st(l) !== 'rejected'); }
+      return { ...e, found };
+    });
+  }
+
+  /* ---------- export / import ---------- */
+  function exportJSON() {
+    const { an } = runAnalysis();
+    const data = {
+      schemaVersion: '1.0', tool: 'Statics Modeling Studio prototype 0.1', exportedAt: new Date().toISOString(),
+      note: 'Photos are not included in exported files. All stored values are SI (m, N, N·m, N/m); "units" records the display units.',
+      mode: state.mode, example: state.sampleKey, units: state.units,
+      object: { name: state.object.name, description: state.object.desc, clarifications: state.object.clar },
+      dimensionality: { aiRecommended: state.ai ? state.ai.dim.rec : null, chosen: state.dimChoice },
+      scope: { ai: state.ai ? state.ai.scope.rating : null, student: state.studentScope },
+      model: state.model,
+      aiProposalShown: state.ai ? state.ai.shown : null,
+      aiReference: state.ai ? state.ai.reference : null,
+      analysis: {
+        status: an.status, unknownCount: an.n, rank: an.rank, degreeOfIndeterminacy: an.degree, momentPoint: an.momentPoint ? lab(an.momentPoint) : null,
+        unknowns: an.unknowns.map((u, i) => ({ symbol: u.sym.b + (u.sym.s ? '_' + u.sym.s : ''), kind: u.kind, assumedDirection: u.e, valueSI: an.solution[i] })),
+        checks: an.checks.map((c) => ({ code: c.code, ok: c.ok }))
+      },
+      practice: state.practice.result ? { submissions: state.practice.submissions, disagreements: state.practice.result.items.map((i) => ({ code: i.code, at: i.at, hintLevel: state.practice.hints[i.code + '@' + i.at] || 0 })) } : null,
+      challenge: state.challenge ? { mutations: state.challenge.log, results: state.challenge.checked ? challengeResults().map((r) => ({ op: r.op, found: r.found })) : null } : null,
+      reflections: state.reflections, events: state.events
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    const name = (state.object.name || 'model').replace(/[^\w-]+/g, '_');
+    a.href = URL.createObjectURL(blob); a.download = `statics_model_${name}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    log('export'); toast('Model exported (photos are not included).');
+  }
+  function importJSON(file) {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const d = JSON.parse(r.result);
+        if (!d.model || !Array.isArray(d.model.points)) throw new Error('shape');
+        resetObject();
+        state.mode = MODES.some((mm) => mm.id === d.mode) ? d.mode : 'guided';
+        state.units = d.units && UNITS[d.units.system] ? d.units : state.units;
+        state.object = { name: d.object?.name || '', desc: d.object?.description || '', clar: d.object?.clarifications || [] };
+        state.model = d.model; state.dimChoice = d.dimensionality?.chosen || null;
+        state.reflections = d.reflections || {}; state.events = d.events || [];
+        state.sampleKey = d.example || null; state.interpreted = true;
+        if (d.aiReference && d.example && SAMPLES[d.example]) {
+          const smp = SAMPLES[d.example];
+          state.ai = { scope: smp.ai.scope, dim: smp.ai.dim, components: smp.ai.components, questions: smp.ai.questions, reference: d.aiReference, shown: d.aiProposalShown };
+          state.images = [{ id: 'img0', src: smp.art, name: smp.title, illus: true }];
+        }
+        log('import'); state.step = 2; render(); toast('Model imported. Photos are not stored in model files; add the photo again if you need it.');
+      } catch (e) { toast('This file is not a Statics Modeling Studio model.'); }
+    };
+    r.readAsText(file);
+  }
+
+  /* ================= RENDERING ================= */
+  function render() {
+    const rs = $('#right').scrollTop;
+    renderHeader(); renderLeft(); renderCenter(); renderRight(); renderFlow();
+    $('#right').scrollTop = rs;
+  }
+  function renderHeader() {
+    $('#modes').innerHTML = MODES.map((m) => `<button data-act="mode:${m.id}" aria-pressed="${state.mode === m.id}" title="${esc(m.tip)}">${m.name}</button>`).join('');
+    const u = UNITS[state.units.system];
+    $('#units').innerHTML = `<span>Units</span>
+      <select data-f="units||system" aria-label="Unit system"><option value="SI"${state.units.system === 'SI' ? ' selected' : ''}>SI</option><option value="USCS"${state.units.system === 'USCS' ? ' selected' : ''}>US customary</option></select>
+      <select data-f="units||len" aria-label="Length unit">${Object.keys(u.len).map((k) => `<option${k === state.units.len ? ' selected' : ''}>${k}</option>`).join('')}</select>
+      <select data-f="units||force" aria-label="Force unit">${Object.keys(u.force).map((k) => `<option${k === state.units.force ? ' selected' : ''}>${k}</option>`).join('')}</select>`;
+  }
+
+  function renderLeft() {
+    const img = state.images[state.active];
+    let h = `<div class="panelhead"><h2>Real object</h2>${img && img.illus ? '<span class="fine">illustration</span>' : ''}</div>`;
+    if (img) {
+      const marks = state.model.points.filter((p) => p.anchor && (p.anchor.img === img.id)).map((p) =>
+        `<div class="mark${state.highlight === p.id ? ' hl' : ''}" style="left:${(p.anchor.u * 100).toFixed(2)}%;top:${(p.anchor.v * 100).toFixed(2)}%">${esc(p.label)}</div>`).join('');
+      h += `<div id="photo-wrap" class="photowrap${state.anchoring ? ' anchoring' : ''}"><img src="${img.src}" alt="${esc(img.name)}">${marks}</div>`;
+      if (state.anchoring) h += `<p class="note">Click on the photo where point <b>${esc(lab(state.anchoring))}</b> is.</p>`;
+      else if (state.model.points.some((p) => p.anchor)) h += `<p class="fine">Labeled markers link the photo to the idealized model. Same letter, same location.</p>`;
+      if (state.images.length > 1) h += `<div class="thumbs">${state.images.map((im, i) => `<button data-act="img:${i}" aria-pressed="${i === state.active}" aria-label="Photo ${i + 1}"><img src="${im.src}" alt=""></button>`).join('')}</div>`;
+    } else {
+      h += `<div class="photowrap photoempty"><b>Photograph the whole object.</b><ul>
+        <li>Show every support and connection clearly.</li><li>Include enough surroundings to see how it is held up.</li>
+        <li>Stand square to the object's main plane; angles taken at a slant are distorted.</li><li>Show which way is down if it isn't obvious.</li></ul>
+        <span class="fine">Never climb or enter restricted areas to get a photo.</span></div>`;
+    }
+    h += `<div class="row"><label class="btn small">Upload photos<input type="file" accept="image/*,.heic,.heif" multiple hidden data-upload></label>
+      <label class="btn small">Take photo<input type="file" accept="image/*" capture="environment" hidden data-upload></label></div>
+      <p class="fine">JPG, PNG; HEIC where the browser supports it. Photos stay on this device.</p>
+      <div class="examples"><h3>Worked examples</h3>${Object.values(SAMPLES).map((s) => `<button class="btn small" data-act="sample:${s.key}"><span>${esc(s.title)}</span><small>${{ ladder: 'simple', crane: 'moderate', bike: 'abstraction' }[s.key]}</small></button>`).join('')}</div>`;
+    $('#left').innerHTML = h;
+  }
+
+  function renderCenter() {
+    const tabs = [['model', 'Idealized model'], ['fbd', 'Free-body diagram']];
+    if (state.mode === 'practice' && state.practice.revealed) tabs.push(['ai', 'AI model']);
+    const stepId = STEPS[state.step].id;
+    $('#tabs').innerHTML = tabs.map(([k, n]) => `<button role="tab" aria-selected="${state.tab === k}" data-act="tab:${k}">${n}</button>`).join('') +
+      `<span class="spacer">${state.tab === 'ai' ? 'AI proposal, shown for comparison (read-only)' : state.tab === 'model' ? 'Supports drawn as symbols' : 'Supports replaced by reaction components'}</span>`;
+    const svg = $('#diagram'), empty = $('#diagempty');
+    const m = state.tab === 'ai' && state.ai ? state.ai.reference : state.model;
+    if (!m.points.length) {
+      svg.innerHTML = ''; empty.hidden = false;
+      empty.innerHTML = state.interpreted ? 'Add points on the Geometry step to start drawing the model.' : (state.images.length && !state.sampleKey ? '<div><b>Photo loaded.</b><br>Live AI analysis is not connected in this version, so the AI cannot interpret your photo yet.<br>Name the object on the right, then click <b>Build the model myself</b>.</div>' : '<div><b>The idealized model appears here.</b><br>Upload a photo or open a worked example, then request an interpretation or build the model yourself.</div>');
+    } else {
+      empty.hidden = true;
+      const pm = prepModel(m);
+      const an = S.analyze(pm, { momentPointId: state.momentPointId });
+      Render.draw(svg, { model: pm, analysis: an, view: state.tab === 'fbd' ? 'fbd' : 'model', fmt, momentPointId: stepId === 'equations' || stepId === 'solution' ? an.momentPoint : null, highlight: state.highlight });
+    }
+    $('#legend').innerHTML = `<span class="lg-load">Known load</span><span class="lg-unk">Unknown reaction</span><span class="lg-ai">AI suggestion, not yet decided</span><span class="lg-res">Resultant of a distributed load</span>`;
+  }
+
+  function renderFlow() {
+    const groups = [];
+    STEPS.forEach((s, i) => { let g = groups.find((x) => x.name === s.group); if (!g) groups.push((g = { name: s.group, steps: [] })); g.steps.push({ ...s, i }); });
+    $('#groups').innerHTML = groups.map((g) => `<div class="grp"><span class="gname">${g.name}</span><div class="steps">${g.steps.map((s) =>
+      `<button class="stepbtn" data-act="step:${s.i}"${s.i === state.step ? ' aria-current="step"' : ''}${s.i > 0 && !state.interpreted ? ' disabled' : ''}><span class="n">${s.i + 1}</span>${s.name}</button>`).join('')}</div></div>`).join('');
+    document.querySelector('[data-act="prev"]').disabled = state.step === 0;
+    document.querySelector('[data-act="next"]').disabled = state.step === STEPS.length - 1 || !state.interpreted;
+  }
+
+  /* ---- right panel ---- */
+  function provBadge(x) {
+    const p = x.prov || { source: 'student', status: 'added' };
+    if (p.status === 'rejected') return `<span class="badge b-rej">Rejected by student</span>`;
+    if (p.source === 'ai') {
+      if (p.status === 'proposed') return `<span class="badge b-ai">AI suggestion</span>`;
+      return `<span class="badge b-stu">${p.status === 'accepted' ? 'Accepted by student' : 'Edited by student'}</span>`;
+    }
+    return `<span class="badge b-stu">Student decision</span>`;
+  }
+  const cardCls = (x) => `card ${x.prov && x.prov.source === 'ai' && x.prov.status === 'proposed' ? 'c-ai' : 'c-stu'} st-${st(x)}`;
+  function decisionBtns(kind, x) {
+    const s = st(x);
+    if (s === 'rejected') return `<button class="btn small" data-act="restore:${kind}:${x.id}">Restore</button>`;
+    let h = '';
+    if (x.prov && x.prov.source === 'ai') {
+      if (s === 'proposed') h += `<button class="btn small" data-act="accept:${kind}:${x.id}">Accept</button>`;
+      h += `<button class="btn small" data-act="reject:${kind}:${x.id}">Reject</button>`;
+    } else h += `<button class="btn small" data-act="del:${kind}:${x.id}">Delete</button>`;
+    return h;
+  }
+  const ptOptions = (sel, allowNone) => (allowNone ? `<option value="">—</option>` : '') + state.model.points.map((p) => `<option value="${p.id}"${p.id === sel ? ' selected' : ''}>${esc(p.label)}</option>`).join('');
+  const aiPreface = (x) => x.prov && x.prov.source === 'ai';
+
+  function guideBox(id) {
+    if (state.mode === 'challenge' && state.challenge && ['interpret', 'fbd'].includes(id)) return '';
+    if (state.mode === 'guided' || state.mode === 'exploration' || state.mode === 'practice') return `<div class="guide"><b>Think first.</b> ${GUIDE[id]}</div>`;
+    return '';
+  }
+  const PROV_LEGEND = `<div class="prov-legend"><div class="pl-ai">AI suggestion<br><span class="fine">a proposal, not a fact</span></div><div class="pl-stu">Student decision<br><span class="fine">what you commit to</span></div><div class="pl-fact">Engineering consequence<br><span class="fine">follows from statics</span></div></div>`;
+
+  function renderRight() {
+    const id = STEPS[state.step].id;
+    let h = `<div class="panelhead"><h2>${state.step + 1}. ${STEPS[state.step].name}</h2><span class="fine">${MODES.find((m) => m.id === state.mode).name} mode</span></div>`;
+    if (state.step > 0) h += PROV_LEGEND;
+    h += guideBox(id);
+    h += ({ capture: rCapture, interpret: rInterpret, geometry: rGeometry, assumptions: rAssumptions, loads: rLoads, supports: rSupports, fbd: rFBD, equations: rEquations, solution: rSolution })[id]();
+    $('#right').innerHTML = h;
+  }
+
+  function rCapture() {
+    const o = state.object;
+    let h = `<div class="ctl"><label class="wide">Object or structure name<input type="text" data-f="obj||name" value="${esc(o.name)}" placeholder="e.g., ladder, shelf bracket, playground swing"></label>
+      <label class="wide">Your description<textarea data-f="obj||desc" rows="4" placeholder="What is it, how is it supported, and what does it carry? e.g., A bicycle parked on level pavement, no rider, supported by both tires.">${esc(o.desc)}</textarea></label></div>
+      <h3>Help the AI understand the structure</h3>
+      <p class="fine">Add facts the photo cannot show.</p>
+      ${o.clar.map((c, i) => `<div class="clar"><span>${esc(c)}</span><button class="btn ghost small" data-act="delclar:${i}" aria-label="Remove">Remove</button></div>`).join('')}
+      <div class="row"><input type="text" id="newclar" placeholder="e.g., The left end is bolted to the wall." style="flex:1"><button class="btn small" data-act="addclar">Add</button></div>
+      <div class="chips">${['The left end is bolted to the wall.', 'The right end rests on a smooth floor.', 'This cable supports the beam.', 'Assume static equilibrium.'].map((t) => `<button class="chip" data-act="clarex" data-text="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
+    if (state.sampleKey) h += `<p class="fine">In this version the worked-example proposals are pre-written, so your clarifications are recorded but do not change them. Once live analysis is connected, they will be sent with the photo.</p>`;
+    h += `<div class="divider"></div>`;
+    const label = state.mode === 'practice' ? 'Start my model' : 'Request AI interpretation';
+    if (state.mode === 'practice') h += `<p class="note">Practice mode: you build the model first. The geometry is given; you choose supports, loads, and assumptions. The AI model is revealed only after you submit.</p>`;
+    if (state.mode === 'challenge') h += `<p class="note">Challenge mode: the AI proposal you receive will contain questionable modeling decisions. Your job is to find and fix them.</p>`;
+    const ownPhoto = state.images.length && !state.sampleKey && state.mode !== 'practice';
+    if (ownPhoto) h += `<div class="warnbox">Live AI image analysis is not connected in this version, so the AI cannot interpret your photo yet. Click <b>Build the model myself</b>: every tool on the following steps works the same way.</div>`;
+    h += ownPhoto ? `<div class="row"><button class="btn primary" data-act="manual">Build the model myself</button></div>`
+      : `<div class="row"><button class="btn primary" data-act="interpret"${state.images.length ? '' : ' disabled'}>${label}</button><button class="btn" data-act="manual"${state.images.length ? '' : ' disabled'}>Build the model myself</button></div>`;
+    if (!state.images.length) h += `<p class="fine">Add a photo on the left, or open a worked example, to begin.</p>`;
+    return h;
+  }
+
+  function ext3D() {
+    return `<div class="ext"><div class="extlabel">Extension: beyond current course scope</div>
+      <p class="fine">3D supports (Table 5-2). This version can show these but cannot solve 3D models.</p>
+      <table>${S.ONT3D.map((r) => `<tr><td>${r.ref}</td><td>${esc(r.name)}</td><td>${r.n}&nbsp;unknown${r.n > 1 ? 's' : ''}</td><td>${esc(r.comps)}${r.note ? '<br><span class="fine">Couple moments are usually omitted when the body is also supported elsewhere.</span>' : ''}</td></tr>`).join('')}</table>
+      <p class="fine">3D equilibrium: <span class="m">Σ<b>F</b> = 0, Σ<b>M</b><sub>O</sub> = 0</span>, or six scalar equations <span class="m">Σ<i>F</i><sub>x</sub> = Σ<i>F</i><sub>y</sub> = Σ<i>F</i><sub>z</sub> = 0</span> and <span class="m">Σ<i>M</i><sub>x</sub> = Σ<i>M</i><sub>y</sub> = Σ<i>M</i><sub>z</sub> = 0</span>.</p></div>`;
+  }
+
+  function challengeBox() {
+    if (!state.challenge) return '';
+    let h = `<div class="warnbox"><b>Challenge.</b> This AI proposal contains at least two questionable modeling decisions. Find them: edit or reject the items you disagree with, and justify your changes. Then check your findings.</div>`;
+    h += `<div class="row"><button class="btn small primary" data-act="checkchallenge">Check my findings</button></div>`;
+    if (state.challenge.checked) {
+      const res = challengeResults();
+      const n = res.filter((r) => r.found).length;
+      h += `<div class="${n === res.length ? 'okbox' : 'note'}">You found ${n} of ${res.length}.</div>`;
+      res.forEach((r) => {
+        h += `<div class="hint ${r.found ? 'found' : 'notfound'}">${r.found ? 'Found: ' + Feedback.MUT_TEXT[r.op] : (state.challenge.revealed ? 'Not found: ' + Feedback.MUT_TEXT[r.op] : 'Still hidden. ' + Feedback.MUT_HINT[r.op])}</div>`;
+      });
+      if (n < res.length && !state.challenge.revealed) h += `<div class="row"><button class="btn small" data-act="revealchallenge">Show what was changed</button></div>`;
+    }
+    return h;
+  }
+
+  function rInterpret() {
+    let h = '';
+    if (state.mode === 'challenge') h += challengeBox();
+    if (state.ai && !state.aiHidden) {
+      const sc = state.ai.scope;
+      const scName = { green: 'Suitable', yellow: 'Requires student clarification', red: 'Outside current scope' }[sc.rating];
+      h += `<div class="aibox"><b>AI suggestion: scope</b></div><div class="scope ${sc.rating}"><span class="dot"></span><div><b>${scName}.</b> ${esc(sc.reason)}</div></div>`;
+      h += `<h3>Components the AI identified</h3>${state.ai.components.map((c) => `<div class="comp"><span><b>${esc(c.name)}</b><br><span class="fine">${esc(c.role)}</span></span><span class="conf">${CONF[c.conf]}</span></div>`).join('')}`;
+      if (state.ai.questions?.length) h += `<h3>Questions for you</h3>${state.ai.questions.map((q) => `<div class="note">${esc(q)}</div>`).join('')}`;
+      h += `<h3>2D or 3D?</h3><div class="aibox"><b>AI suggestion:</b> ${state.ai.dim.rec} model. ${esc(state.ai.dim.reason)}</div>`;
+    } else if (state.ai && state.aiHidden) {
+      h += `<div class="note">Practice mode: the AI interpretation stays hidden until you submit your model on the Free-body diagram step. Decide for yourself what the system is and how it is supported.</div><h3>2D or 3D?</h3>`;
+    } else {
+      h += `<div class="note">No AI interpretation for this photo. Rate the scope yourself before you model it.</div>
+        <div class="radio">${[['green', 'Suitable: one rigid body with standard supports'], ['yellow', 'Needs clarification: some connections are unclear'], ['red', 'Outside current scope: deformation, many interacting parts, or motion']].map(([v, t]) =>
+          `<label><input type="radio" name="scope" value="${v}" data-f="scope||v"${state.studentScope === v ? ' checked' : ''}> ${t}</label>`).join('')}</div>
+        ${state.studentScope === 'red' ? '<div class="warnbox">If the object is outside the rigid-body statics scope, a misleading model is worse than no model. You can still try a deliberately simplified version, but state the simplification as an assumption.</div>' : ''}<h3>2D or 3D?</h3>`;
+    }
+    h += `<div class="radio">${[['2D', '2D statics model'], ['3D', '3D statics model'], ['unsure', 'I am not sure']].map(([v, t]) =>
+      `<label><input type="radio" name="dim" value="${v}" data-f="dim||v"${state.dimChoice === v ? ' checked' : ''}> ${t}</label>`).join('')}</div>`;
+    if (state.dimChoice === '2D') h += `<div class="fact"><div class="facthead">Engineering consequence</div><p>Three independent equilibrium equations are available: <span class="m">Σ<i>F</i><sub>x</sub> = 0, Σ<i>F</i><sub>y</sub> = 0, Σ<i>M</i><sub>O</sub> = 0</span>. At most three unknown reaction components can be found from statics.</p></div>`;
+    if (state.dimChoice === 'unsure') h += `<div class="note">Ask: do all the loads, supports, and the body's geometry lie in a single plane? If yes, 2D is appropriate. If forces act out of that plane, or supports are arranged in space, the problem is 3D.</div>`;
+    if (state.dimChoice === '3D') h += `<div class="warnbox">3D solving is not available in this version. You can still look at the 3D support reactions below, or choose 2D if a planar idealization is defensible.</div>`;
+    if (state.dimChoice === '3D' || state.mode === 'exploration') h += ext3D();
+    return h;
+  }
+
+  function rGeometry() {
+    const m = state.model;
+    let h = `<p class="fine">Coordinates are in ${ustr('L')}, measured from an origin you choose, with +x to the right and +y up. Numbers estimated from a photo are labeled as estimates; replace them with measurements when you can. Model geometry always comes from these numbers, never from photo pixels.</p>
+      <table class="pts"><thead><tr><th>Point</th><th>x (${ustr('L')})</th><th>y (${ustr('L')})</th><th>Source</th><th></th></tr></thead><tbody>`;
+    for (const p of m.points) {
+      h += `<tr><td><input type="text" data-f="pt|${p.id}|label" value="${esc(p.label)}" aria-label="Label"></td>
+        <td><input type="number" step="any" data-num data-unit="L" data-f="pt|${p.id}|x" value="${inval(p.x, 'L')}" aria-label="x"></td>
+        <td><input type="number" step="any" data-num data-unit="L" data-f="pt|${p.id}|y" value="${inval(p.y, 'L')}" aria-label="y"></td>
+        <td><select class="srcsel" data-f="pt|${p.id}|src">${['student', 'estimated', 'assumed', 'given'].map((s) => `<option value="${s}"${p.src === s ? ' selected' : ''}>${{ student: 'Student-provided', estimated: 'Estimated', assumed: 'Assumed', given: 'Given' }[s]}</option>`).join('')}</select></td>
+        <td style="white-space:nowrap"><button class="btn ghost small" data-act="anchor:${p.id}" title="Mark this point on the photo">${state.anchoring === p.id ? 'Click photo…' : 'Mark on photo'}</button><button class="btn ghost small" data-act="delpt:${p.id}" aria-label="Delete point ${esc(p.label)}">✕</button></td></tr>`;
+    }
+    h += `</tbody></table><div class="row"><button class="btn small" data-act="addpt">Add point</button></div>
+      <h3>The body you isolate</h3>
+      <div class="ctl"><label class="wide">Outline (point labels in order)<input type="text" data-f="body||outline" value="${esc(m.body.outline.map(lab).join(', '))}" placeholder="e.g., A, B"></label>
+      <label>Center of gravity<select data-f="body||cg">${ptOptions(m.body.cg, true)}</select></label>
+      <label style="flex-direction:row;align-items:center;gap:6px;margin-top:16px"><input type="checkbox" data-f="body||closed"${m.body.closed ? ' checked' : ''}> Closed shape</label></div>
+      <div class="fact"><div class="facthead">Engineering consequence</div><p>The outline only shapes the drawing. Statics uses the points where forces act and the distances between them.</p></div>`;
+    if (m.points.some((p) => p.src === 'estimated')) h += `<div class="aibox"><b>AI suggestion:</b> coordinates marked “Estimated” were read from the photo and assume a viewing angle. Treat them as rough.</div>`;
+    return h;
+  }
+
+  function rAssumptions() {
+    const m = state.model;
+    let h = `<p class="fine">AI-generated assumptions are suggestions, not facts. Accept, edit, or reject each, and add any the AI missed.</p>`;
+    if (!m.assumptions.length) h += `<p class="note">No assumptions yet. Every model has some: write yours down.</p>`;
+    for (const a of m.assumptions) {
+      const cls = a.prov && a.prov.source === 'ai' && a.prov.status === 'proposed' ? 'c-ai' : 'c-stu';
+      h += `<div class="asm ${cls} st-${st(a)}"><input type="text" data-f="asm|${a.id}|text" value="${esc(a.text)}"${st(a) === 'rejected' ? ' disabled' : ''} aria-label="Assumption">${provBadge(a)}${decisionBtns('asm', a)}</div>`;
+      if (a.prov && a.prov.why && st(a) === 'proposed') h += `<div class="fine" style="margin:-3px 0 6px 12px">${esc(a.prov.why)}</div>`;
+    }
+    h += `<div class="row"><input type="text" id="newasm" placeholder="e.g., The bolt at A allows rotation." style="flex:1"><button class="btn small" data-act="addasm">Add assumption</button></div>`;
+    return h;
+  }
+
+  function rLoads() {
+    const m = state.model;
+    let h = `<div class="note">Loads act on the body from outside: weight and applied forces. <b>Support reactions are not loads.</b> They appear automatically, as unknowns, from the supports you choose. Load magnitudes may be estimates; reaction magnitudes stay unknown until the equations are solved.</div>`;
+    if (state.aiHidden) h += `<p class="fine">Practice mode: add the loads you think act on the body.</p>`;
+    for (const l of m.loads) h += loadCard(l);
+    h += `<div class="row"><button class="btn small" data-act="addload">Add load</button></div>`;
+    return h;
+  }
+  function loadCard(l) {
+    const kinds = { force: 'Point force', weight: 'Weight', couple: 'Couple moment', dist: 'Distributed load' };
+    let h = `<div class="${cardCls(l)}"><div class="cardhead"><span class="ttl">${lblHTML(l.label)} &nbsp;${kinds[l.kind]}</span>${provBadge(l)}</div>`;
+    if (aiPreface(l) && l.prov.why) h += `<div class="aibox"><b>AI suggestion</b> <span class="conf">· ${CONF[l.prov.conf]}</span><br>${esc(l.prov.why)}</div>`;
+    h += `<div class="ctl"><label>Label<input type="text" data-f="load|${l.id}|label" value="${esc(l.label)}"></label>
+      <label>Type<select data-f="load|${l.id}|kind">${Object.entries(kinds).map(([k, n]) => `<option value="${k}"${l.kind === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label>${l.kind === 'dist' ? 'From point' : 'At point'}<select data-f="load|${l.id}|pointId">${ptOptions(l.pointId)}</select></label>`;
+    if (l.kind === 'dist') {
+      h += `<label>To point<select data-f="load|${l.id}|p2Id">${ptOptions(l.p2Id)}</select></label>
+        <label>Intensity at start (${ustr('w')})<input type="number" step="any" data-num data-unit="w" data-f="load|${l.id}|w1" value="${inval(l.w1, 'w')}"></label>
+        <label>Intensity at end (${ustr('w')})<input type="number" step="any" data-num data-unit="w" data-f="load|${l.id}|w2" value="${inval(l.w2, 'w')}"></label>
+        <label>Direction (deg from +x)<input type="number" step="any" data-num data-f="load|${l.id}|dirDeg" value="${l.dirDeg ?? 270}"></label>`;
+    } else if (l.kind === 'couple') {
+      h += `<label>Moment (${ustr('M')}), + = counterclockwise<input type="number" step="any" data-num data-unit="M" data-f="load|${l.id}|mag" value="${inval(l.mag, 'M')}"></label>`;
+    } else {
+      h += `<label>Magnitude (${ustr('F')})<input type="number" step="any" data-num data-unit="F" data-f="load|${l.id}|mag" value="${inval(l.mag, 'F')}"></label>`;
+      if (l.kind === 'force') h += `<label>Direction (deg from +x)<input type="number" step="any" data-num data-f="load|${l.id}|dirDeg" value="${l.dirDeg ?? 270}"></label>`;
+    }
+    h += `<label>Magnitude source<select data-f="load|${l.id}|src">${['student', 'estimated', 'assumed'].map((s) => `<option value="${s}"${l.src === s ? ' selected' : ''}>${{ student: 'Student-provided', estimated: 'Estimated', assumed: 'Assumed' }[s]}</option>`).join('')}</select></label></div>`;
+    if (l.kind === 'weight') h += `<div class="fact"><div class="facthead">Engineering consequence</div><p>Weight acts vertically downward at ${esc(lab(l.pointId))}${state.model.body.cg === l.pointId ? ', the center of gravity' : '. Note: this is not the point you marked as the center of gravity'}.</p></div>`;
+    if (l.kind === 'dist') {
+      const R = S.resolveLoads({ points: state.model.points, loads: [{ ...l, excluded: false }] }).loads[0];
+      if (R) h += `<div class="fact"><div class="facthead">Engineering consequence: equivalent resultant</div><p><span class="m"><i>R</i></span> = ½(<span class="m"><i>w</i><sub>1</sub> + <i>w</i><sub>2</sub></span>)<span class="m"><i>L</i></span> = ½(${fmt(l.w1, 'w')} + ${fmt(l.w2, 'w')})(${fmt(R.len, 'L')}) = <b>${fmt(R.mag, 'F')}</b></p>
+        <p>acting ${fmt(R.xbar, 'L')} from ${esc(lab(l.pointId))}: <span class="m"><i>x̄</i></span> = <span class="m"><i>L</i>(<i>w</i><sub>1</sub> + 2<i>w</i><sub>2</sub>) / 3(<i>w</i><sub>1</sub> + <i>w</i><sub>2</sub>)</span>.</p></div>`;
+    }
+    return h + `<div class="acts">${decisionBtns('load', l)}</div></div>`;
+  }
+
+  function rSupports() {
+    const m = state.model;
+    let h = `<p class="fine">Each support idealization fixes which reaction components exist. You choose the idealization; the reaction components follow from statics.</p>`;
+    for (const s of m.supports) h += supportCard(s);
+    h += `<div class="row"><button class="btn small" data-act="addsup">Add support or connection</button></div>`;
+    return h;
+  }
+  function supportCard(s) {
+    const P = pt(s.pointId);
+    const t = s.type ? ONT[s.type] : null;
+    let h = `<div class="${cardCls(s)}"><div class="cardhead"><span class="ttl">Connection at ${esc(P ? P.label : '?')}</span>${provBadge(s)}</div>`;
+    if (aiPreface(s)) {
+      const proposal = state.ai && state.ai.shown ? (state.ai.shown.supports.find((x) => x.id === s.id) || {}).type : s.type;
+      h += `<div class="aibox"><b>AI suggestion:</b> ${s.prov.conf === 'cannot' ? 'The photograph does not provide enough information to confidently classify this connection.' : `${CONF[s.prov.conf]} ${proposal && ONT[proposal] ? ONT[proposal].name.toLowerCase() : ''}`}<br>${esc(s.prov.why)}</div>`;
+    }
+    const fromAI = s.prov && s.prov.source === 'ai';
+    if (!s.type && fromAI && st(s) !== 'rejected') {
+      h += `<p><b>How would you like to idealize this connection?</b></p><div class="decide">
+        ${['pin', 'roller', 'fixed'].map((k) => `<button class="btn small" data-act="choose:${s.id}:${k}">${ONT[k].name.split(' ').pop() === 'hinge' ? 'Pin' : ONT[k].name}</button>`).join('')}
+        <button class="btn small" data-act="choose:${s.id}:other">Other…</button><button class="btn small" data-act="choose:${s.id}:dontknow">I don't know</button></div>`;
+      if (state.dontKnow[s.id]) h += `<div class="note">Look for clues: a single bolt or pin through a bracket allows rotation (pin). A welded joint or a plate with several bolts tends to resist rotation (fixed). If you still cannot tell, choose the idealization you can best defend, write down why, and then try the other one: comparing both results shows how much the answer depends on this assumption.</div>`;
+    }
+    if (s.type || state.chooseOther[s.id] || !fromAI) {
+      h += `<div class="ctl"><label>At point<select data-f="sup|${s.id}|pointId">${ptOptions(s.pointId)}</select></label>
+        <label>Idealization<select data-f="sup|${s.id}|type"><option value="">— choose —</option><optgroup label="Table 5-1 (2D)">${Object.entries(ONT).filter(([k]) => k !== 'rough').map(([k, o]) => `<option value="${k}"${s.type === k ? ' selected' : ''}>(${o.ref.split('(')[1]} ${esc(o.name)}</option>`).join('')}</optgroup><optgroup label="With friction"><option value="rough"${s.type === 'rough' ? ' selected' : ''}>${esc(ONT.rough.name)}</option></optgroup></select></label>`;
+      if (t && t.dirLabel) {
+        const linear = s.type === 'cable' || s.type === 'link';
+        if (linear) h += `<label>Direction set by<select data-f="sup|${s.id}|towardId"><option value="">angle below</option>${state.model.points.filter((p) => p.id !== s.pointId).map((p) => `<option value="${p.id}"${s.towardId === p.id ? ' selected' : ''}>line toward ${esc(p.label)}</option>`).join('')}</select></label>`;
+        const shown = linear && s.towardId ? prepSupport(s, Object.fromEntries(state.model.points.map((p) => [p.id, p]))).dirDeg : s.dirDeg;
+        h += `<label>${esc(t.dirLabel)} (deg from +x)<input type="number" step="any" data-num data-f="sup|${s.id}|dirDeg" value="${shown !== undefined && shown !== null ? parseFloat((+shown).toFixed(3)) : ''}"${linear && s.towardId ? ' disabled' : ''}></label>`;
+        if (!linear) h += `<p class="fine" style="grid-column:1/-1;margin:0">90° = floor pushing up · 180° = wall on the right pushing left · 0° = wall on the left pushing right</p>`;
+      }
+      if (s.type === 'pin' || s.type === 'fixed') h += `<label>Drawn with support on<select data-f="sup|${s.id}|symbolDeg">${[[270, 'ground below'], [180, 'wall to the left'], [0, 'wall to the right'], [90, 'ceiling above']].map(([v, n]) => `<option value="${v}"${(s.symbolDeg ?? 270) == v ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`;
+      if (s.type === 'rough') h += `<label>Friction<select data-f="sup|${s.id}|frictionMode"><option value="unknown"${s.frictionMode !== 'neglect' ? ' selected' : ''}>Unknown friction force F</option><option value="neglect"${s.frictionMode === 'neglect' ? ' selected' : ''}>Neglect friction</option></select></label>
+        <label>Static coefficient μs (optional, for slip check)<input type="number" step="any" min="0" data-num data-f="sup|${s.id}|mu" value="${s.mu ?? ''}"></label>`;
+      h += `</div>`;
+    }
+    h += consequence(s);
+    h += `<label class="fine" style="display:block;margin-top:6px">Defend this choice in one sentence<textarea data-f="sup|${s.id}|rationale" rows="2" placeholder="e.g., A single pin passes through the bracket, so the boom can rotate at A.">${esc(s.rationale || '')}</textarea></label>`;
+    return h + `<div class="acts">${decisionBtns('sup', s)}</div></div>`;
+  }
+  function consequence(s) {
+    if (st(s) === 'rejected') return '';
+    if (!s.type) return `<div class="fact"><div class="facthead">Engineering consequence</div><p>No idealization chosen yet, so this connection contributes no reaction components.</p></div>`;
+    const P = pt(s.pointId); if (!P) return '';
+    const t = ONT[s.type];
+    const us = S.supportUnknowns(prepSupport(s, Object.fromEntries(state.model.points.map((p) => [p.id, p]))), [P.x, P.y], P.label);
+    let extra = '';
+    if (s.type === 'rough' && s.frictionMode === 'neglect') extra = '<p>Friction is neglected, so this behaves exactly like a smooth surface.</p>';
+    return `<div class="fact"><div class="facthead">Engineering consequence</div><p><b>${us.length} unknown${us.length === 1 ? '' : 's'}:</b> ${us.map((u) => symHTML(u.sym)).join(', ')}.</p><p>${esc(t.explain)}</p>${extra}<p class="fine">Prevents ${esc(t.prevents)}. Allows ${esc(t.allows)}. (Table ${t.ref})</p></div>`;
+  }
+
+  /* ---- FBD step ---- */
+  const STATUS = {
+    determinate: ['ok', 'Statically determinate and properly constrained.', (an) => `${an.n} unknowns and 3 independent equilibrium equations. Every reaction can be found from statics.`],
+    indeterminate: ['warn', 'Statically indeterminate.', (an) => `${an.n} unknowns but only 3 independent equations: indeterminate to degree ${an.degree}. Statics alone cannot find every reaction. Either some support components are redundant in your idealization, or the real structure needs deformation analysis (mechanics of materials).`],
+    partial: ['warn', 'Improperly (partially) constrained.', (an) => `The supports provide only ${an.rank} independent constraint${an.rank === 1 ? '' : 's'} instead of 3, so they cannot resist every possible load. Equilibrium happens to be possible for this particular loading, so the reactions are valid only for it.`],
+    partial_indeterminate: ['warn', 'Improperly constrained and indeterminate.', (an) => `The supports provide only ${an.rank} independent constraints, yet there are ${an.n} unknowns. Some reactions cannot be determined, and the body could not resist a general load.`],
+    mechanism: ['warn', 'Equilibrium is impossible under this loading.', (an) => `The supports provide only ${an.rank} independent constraint${an.rank === 1 ? '' : 's'}, and the loads push the body in a direction nothing resists: the body would move (a mechanism). Add or change supports, or revisit the idealization.`],
+    unsupported: ['warn', 'The body has no supports.', () => 'Nothing holds the body. Add the supports and connections that hold it in place.']
+  };
+  function statusBox(an) {
+    const [k, t, f] = STATUS[an.status];
+    let extra = '';
+    if (an.status.includes('indeterminate') && an.unknowns.filter((u) => u.role === 'friction').length >= 2)
+      extra = '<br><br>Here the extra unknowns are friction forces at more than one contact. Textbooks usually resolve this by assuming impending slip, F = μs·N, at every rough contact, then solving for the critical angle or the required μs. That impending-motion analysis is planned for a later version; for now, compare this model with one that has a single rough contact.';
+    return `<div class="${k === 'ok' ? 'okbox' : 'warnbox'}"><b>${t}</b> ${f(an)}${extra}</div>`;
+  }
+  function rFBD() {
+    const { an } = runAnalysis();
+    let h = '';
+    if (state.mode === 'challenge') h += challengeBox();
+    const bySup = {};
+    an.unknowns.forEach((u) => (bySup[u.supportId] = bySup[u.supportId] || []).push(u));
+    h += `<div class="fact"><div class="facthead">Engineering consequence: reaction components</div>`;
+    const live = state.model.supports.filter((s) => st(s) !== 'rejected');
+    if (!live.length) h += `<p>No supports yet.</p>`;
+    for (const s of live) h += `<p>${esc(lab(s.pointId))}: ${s.type ? esc(ONT[s.type].name.toLowerCase()) : '<i>not idealized yet</i>'} → ${(bySup[s.id] || []).map((u) => symHTML(u.sym)).join(', ') || 'none'}</p>`;
+    h += `<p><b>${an.n} unknown${an.n === 1 ? '' : 's'}</b>, 3 independent equations in 2D.</p></div>`;
+    if (an.n) h += statusBox(an);
+    const p = pending();
+    if (p.length) h += `<div class="note">${p.length} AI suggestion${p.length > 1 ? 's are' : ' is'} still undecided; they are drawn dashed. Decide each one before writing equations.</div>`;
+    h += `<h3>Check your hand-drawn FBD</h3><div class="note">Is the body drawn completely free of its surroundings? Is every support replaced by its reaction components? Are weight and applied loads shown at the correct points? Are the coordinate axes and key dimensions shown? Are unknown reactions labeled?</div>`;
+    if (state.mode === 'practice' && state.ai) h += practiceBox();
+    if (state.mode === 'exploration') h += ext3D();
+    return h;
+  }
+  function practiceBox() {
+    let h = `<div class="divider"></div><h3>Compare with the AI model</h3>`;
+    h += `<p class="fine">Disagreement is not automatically an error. The AI model is one defensible idealization, and it can be wrong. Use each difference as a prompt to re-examine the photo.</p>`;
+    h += `<div class="row"><button class="btn primary small" data-act="submitpractice">${state.practice.result ? 'Compare again' : 'Submit my model and compare'}</button></div>`;
+    const r = state.practice.result;
+    if (!r) return h;
+    if (!r.items.length) h += `<div class="okbox">Your model agrees with the AI model on every compared item.</div>`;
+    for (const it of r.items) {
+      const k = it.code + '@' + it.at;
+      const lvl = state.practice.hints[k] || 0;
+      h += `<div class="card c-stu"><div class="cardhead"><span class="ttl">${esc(it.title)}${it.at !== '—' ? ' at ' + esc(it.at) : ''}</span><span class="badge b-ai">Disagreement</span></div>`;
+      for (let i = 0; i < lvl; i++) h += `<div class="hint"><b>Hint ${i + 1}.</b> ${esc(it.hints[i])}</div>`;
+      if (lvl < 3) h += `<div class="acts"><button class="btn small" data-act="hint:${esc(k)}">Show hint ${lvl + 1}</button></div>`;
+      h += `</div>`;
+    }
+    if (r.agree.length) h += `<h3>Agreement</h3>${r.agree.map((a) => `<div class="fine">✓ ${esc(a)}</div>`).join('')}`;
+    if (!state.practice.revealed) h += `<div class="row"><button class="btn small" data-act="revealai">Show the AI model</button></div>`;
+    return h;
+  }
+
+  /* ---- equations ---- */
+  function trigTerm(symH, e, axis, sign) {
+    const c = axis === 0 ? e[0] : e[1];
+    if (Math.abs(c) < 1e-12) return null;
+    const sg = sign * Math.sign(c) >= 0 ? '+' : '−';
+    if (Math.abs(Math.abs(c) - 1) < 1e-9) return { sym: `${sg} ${symH}`, coef: Math.abs(c), sg };
+    const alpha = Math.atan2(Math.abs(e[1]), Math.abs(e[0])) * 180 / Math.PI;
+    return { sym: `${sg} ${symH} ${axis === 0 ? 'cos' : 'sin'} ${parseFloat(alpha.toFixed(2))}°`, coef: Math.abs(c), sg };
+  }
+  function buildEquations(an) {
+    const O = an.O, Olab = an.momentPoint ? lab(an.momentPoint) : 'O';
+    const eqs = [
+      { head: `<span class="m">→<sup>+</sup> Σ<i>F</i><sub>x</sub> = 0</span>`, sym: [], sub: [] },
+      { head: `<span class="m">+↑ Σ<i>F</i><sub>y</sub> = 0</span>`, sym: [], sub: [] },
+      { head: `<span class="m">↺+ Σ<i>M</i><sub>${esc(Olab)}</sub> = 0</span>`, sym: [], sub: [], through: [] }
+    ];
+    an.unknowns.forEach((u, j) => {
+      const sh = symHTML(u.sym);
+      if (u.kind === 'M') { eqs[2].sym.push(`+ ${sh}`); eqs[2].sub.push(`+ ${sh}`); return; }
+      for (const ax of [0, 1]) {
+        const t = trigTerm(sh, u.e, ax, 1);
+        if (!t) continue;
+        eqs[ax].sym.push(t.sym);
+        eqs[ax].sub.push(Math.abs(t.coef - 1) < 1e-9 ? `${t.sg} ${sh}` : `${t.sg} ${num(t.coef)}${sh}`);
+      }
+      const d = an.A[2][j];
+      if (Math.abs(d) < 1e-12) eqs[2].through.push(sh);
+      else {
+        const sg = d > 0 ? '+' : '−';
+        eqs[2].sym.push(`${sg} ${sh}·<i>d</i><sub>${esc(u.sym.b + (u.sym.s || ''))}</sub>`);
+        eqs[2].sub.push(`${sg} (${fmt(Math.abs(d), 'L')})${sh}`);
+      }
+    });
+    for (const L of an.loads) {
+      const lh = L.fromDist ? symHTML({ b: 'R', s: L.distLabel }) : lblHTML(L.label);
+      if (L.kind === 'couple') {
+        const sg = L.M >= 0 ? '+' : '−';
+        eqs[2].sym.push(`${sg} ${lh}`); eqs[2].sub.push(`${sg} ${fmt(Math.abs(L.M), 'M')}`); continue;
+      }
+      const e = [L.F[0] / (L.mag || 1), L.F[1] / (L.mag || 1)];
+      if (!L.mag) continue;
+      for (const ax of [0, 1]) {
+        const t = trigTerm(lh, e, ax, 1);
+        if (!t) continue;
+        eqs[ax].sym.push(t.sym);
+        eqs[ax].sub.push(`${t.sg} ${fmt(Math.abs(L.F[ax]), 'F')}`);
+      }
+      const m = (L.P[0] - O[0]) * L.F[1] - (L.P[1] - O[1]) * L.F[0];
+      if (Math.abs(m) > 1e-12 * L.mag) {
+        const sg = m > 0 ? '+' : '−';
+        const key = L.fromDist ? 'R' + L.distLabel : L.label.replace('_', '');
+        eqs[2].sym.push(`${sg} ${lh}·<i>d</i><sub>${esc(key)}</sub>`);
+        eqs[2].sub.push(`${sg} (${fmt(L.mag, 'F')})(${fmt(Math.abs(m) / L.mag, 'L')})`);
+      } else eqs[2].through.push(lh);
+    }
+    return eqs;
+  }
+  const joinTerms = (arr) => (arr.length ? arr.join(' ').replace(/^\+ /, '') : '0') + ' = 0';
+
+  function rEquations() {
+    const b = blockers();
+    if (b.length) return `<div class="warnbox"><b>Finish the model before writing equations.</b><ul>${b.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div><p class="fine">Modeling comes first; the mathematics only works on a model you have committed to.</p>`;
+    const { an } = runAnalysis();
+    let h = `<div class="note"><b>Modeling is done; this is the mathematical solution of your model.</b> The equations below are only as good as the decisions behind them.</div>`;
+    const supPts = [...new Set(state.model.supports.filter((s) => st(s) !== 'rejected').map((s) => s.pointId))];
+    h += `<div class="ctl"><label class="wide">Sum moments about<select data-f="mp||v">${state.model.points.map((p) => `<option value="${p.id}"${p.id === an.momentPoint ? ' selected' : ''}>${esc(p.label)}${supPts.includes(p.id) ? ' (support)' : ''}</option>`).join('')}</select></label></div>`;
+    h += statusBox(an);
+    const eqs = buildEquations(an);
+    eqs.forEach((e, i) => {
+      h += `<div class="eq"><div class="eqhead">${e.head}</div>
+        <div class="lab">Symbolic</div><div class="line">${joinTerms(e.sym)}</div>
+        <div class="lab">Substituted</div><div class="line">${joinTerms(e.sub)}</div>`;
+      if (i === 2 && e.through.length) h += `<div class="fine">Zero moment arm about ${esc(lab(an.momentPoint))} (line of action passes through it): ${e.through.join(', ')}</div>`;
+      h += `</div>`;
+    });
+    h += `<p class="fine"><span class="m"><i>d</i></span> is the perpendicular distance (moment arm) from the moment point to a force's line of action. Counterclockwise moments are positive. Reaction directions are the assumed positive senses drawn on the FBD.</p>`;
+    h += `<div class="row"><button class="btn primary small" data-act="step:${STEPS.length - 1}">Solve</button></div>`;
+    return h;
+  }
+
+  /* ---- solution ---- */
+  function dirWord(e, neg) {
+    const v = neg ? [-e[0], -e[1]] : e;
+    const a = ((Math.atan2(v[1], v[0]) * 180 / Math.PI) + 360) % 360;
+    const names = [[0, 'to the right'], [90, 'upward'], [180, 'to the left'], [270, 'downward'], [360, 'to the right']];
+    for (const [k, n] of names) if (Math.abs(a - k) < 0.01) return n;
+    return `at ${a.toFixed(1)}° from +x`;
+  }
+  function rSolution() {
+    const b = blockers();
+    if (b.length) return `<div class="warnbox"><b>Finish the model first.</b><ul>${b.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    const { an } = runAnalysis();
+    let h = statusBox(an);
+    if (an.status === 'mechanism' || an.status === 'unsupported') {
+      h += `<p>No solution exists for this model. Return to the Supports step.</p>`;
+    } else {
+      h += `<table class="res">`;
+      an.unknowns.forEach((u, i) => {
+        const v = an.solution[i];
+        const k = u.kind === 'M' ? 'M' : 'F';
+        if (v === null) { h += `<tr><td class="v">${symHTML(u.sym)}</td><td><i>Not determined by statics</i></td></tr>`; return; }
+        let meaning;
+        if (u.kind === 'M') meaning = Math.abs(v) < 1e-9 ? 'zero' : v > 0 ? 'counterclockwise' : 'clockwise (opposite to the assumed counterclockwise sense)';
+        else meaning = Math.abs(v) < 1e-9 * an.Fs ? 'zero' : v > 0 ? `acts ${dirWord(u.e)}, as assumed` : `acts ${dirWord(u.e, true)}, opposite to the assumed direction`;
+        h += `<tr><td class="v">${symHTML(u.sym)} = ${num(toD(v, k))} ${ustr(k)}</td><td class="fine">${meaning}</td></tr>`;
+      });
+      h += `</table>`;
+      if (an.relations.length) {
+        h += `<h3>What statics can still say</h3><p class="fine">These combinations are fixed even though the individual reactions are not:</p>`;
+        for (const r of an.relations) {
+          const lead = an.unknowns[r.lead], kl = lead.kind === 'M' ? 'M' : 'F';
+          const terms = r.terms.map((t) => { const u = an.unknowns[t.idx], ku = u.kind === 'M' ? 'M' : 'F'; const c = t.coef * uf(ku) / uf(kl); return `${c >= 0 ? '+' : '−'} ${Math.abs(Math.abs(c) - 1) < 1e-9 ? '' : num(Math.abs(c))}${symHTML(u.sym)}`; }).join(' ');
+          h += `<div class="eq"><div class="line">${symHTML(lead.sym)} ${terms} = ${num(toD(r.rhs, kl))} ${ustr(kl)}</div></div>`;
+        }
+      }
+    }
+    const checks = an.checks;
+    if (checks.length) {
+      h += `<h3>Checks</h3>`;
+      for (const c of checks) {
+        if (c.code === 'RESIDUAL') { h += `<div class="${c.ok ? 'okbox' : 'warnbox'}">${esc(c.msg)}</div>`; continue; }
+        const u = an.unknowns[c.idx];
+        let extra = '';
+        if (c.code === 'FRICTION_OK' || c.code === 'SLIPS') extra = ` (|${u.sym.b}<sub>${u.sym.s}</sub>| = ${fmt(c.need, 'F')}; μs·N = ${fmt(c.lim, 'F')})`;
+        h += `<div class="${c.ok ? 'okbox' : 'warnbox'}">${symHTML(u.sym)} ${esc(c.msg)}${extra}</div>`;
+      }
+    }
+    for (const w of modelWarnings(an)) h += `<div class="warnbox">${esc(w)}</div>`;
+    h += `<div class="divider"></div><h3>Reflect</h3>`;
+    [['sense', 'Does the answer make physical sense? Check directions and rough magnitudes against your intuition.'],
+     ['sensitivity', 'Which single assumption most affects this answer? What would change if it were different?'],
+     ['limits', 'When would this model stop being appropriate for the real object?']].forEach(([k, q]) => {
+      h += `<label class="fine" style="display:block;margin:8px 0">${q}<textarea data-f="refl|x|${k}" rows="2">${esc(state.reflections[k] || '')}</textarea></label>`;
+    });
+    return h;
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act]');
+    if (t && !t.disabled) { act(t.dataset.act, t); return; }
+    const wrap = e.target.closest('#photo-wrap');
+    if (wrap && state.anchoring) {
+      const img = wrap.querySelector('img').getBoundingClientRect();
+      const u = (e.clientX - img.left) / img.width, v = (e.clientY - img.top) / img.height;
+      const p = pt(state.anchoring);
+      if (p && u >= 0 && u <= 1 && v >= 0 && v <= 1) { p.anchor = { img: state.images[state.active].id, u, v }; log('anchor_point', p.id); }
+      state.anchoring = null;
+      render();
+    }
+  });
+  document.addEventListener('change', (e) => {
+    const el = e.target;
+    if (el.matches('[data-upload]')) { addFiles([...el.files]); el.value = ''; return; }
+    if (el.matches('[data-import]')) { if (el.files[0]) importJSON(el.files[0]); el.value = ''; return; }
+    const f = el.closest('[data-f]'); if (!f) return;
+    const [kind, id, field] = f.dataset.f.split('|');
+    let v = el.type === 'checkbox' ? el.checked : el.value;
+    if (el.dataset.num !== undefined) {
+      if (String(v).trim() === '') v = null;
+      else {
+        v = parseFloat(v);
+        if (!isFinite(v)) { toast('Enter a number.'); render(); return; }
+        if (el.dataset.unit) v = fromD(v, el.dataset.unit);
+      }
+    }
+    applyField(kind, id, field, v);
+    render();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.id === 'newasm') act('addasm');
+    if (e.key === 'Enter' && e.target.id === 'newclar') act('addclar');
+  });
+
+  window.__SMS = { state, render, runAnalysis, act, applyField, challengeResults }; // exposed for testing
+  render();
+})();
+
+</script>
+</body>
+</html>
